@@ -38,7 +38,7 @@ body{padding:6px;background:#ecebe7;overflow-x:hidden}.app{max-width:1180px;padd
 @media(max-width:700px){.deck-editor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head><body><div class="app">
-<div class="top"><div><h2 style="margin:0">ここから先は、僕の領地</h2><div class="version">オリジナル版 Ver.2.26</div><div id="status" class="muted">オリジナル版テスト</div></div><button id="start" type="button" class="primary">ゲーム開始</button></div>
+<div class="top"><div><h2 style="margin:0">ここから先は、僕の領地</h2><div class="version">オリジナル版 Ver.2.27</div><div id="status" class="muted">オリジナル版テスト</div></div><button id="start" type="button" class="primary">ゲーム開始</button></div>
 <div id="setup" class="setup"><div><strong>ゲーム設定</strong></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px"><label for="playerCount">プレイ人数</label><select id="playerCount"><option value="2">2人</option><option value="3">3人</option><option value="4" selected>4人</option><option value="5">5人</option><option value="6">6人</option></select><label for="deckPreset">使用デッキ</label><select id="deckPreset"><option value="standard1" selected>スタンダード1（固定）</option><option value="custom">カスタムデッキ</option></select><button id="editDeck" type="button" class="secondary" disabled>デッキ編集</button><label>レジェンド枠 <input id="settingLegendSlots" type="number" min="1" max="30" value="3" style="width:52px"></label><label>勝利VP <input id="settingWinVP" type="number" min="1" value="20" style="width:58px"></label><label>市場公開 <input id="settingMarketTypes" type="number" min="1" value="8" style="width:58px"></label><label>初期資源 <input id="settingInitialResources" type="number" min="0" value="4" style="width:58px"></label><label>手札上限 <input id="settingHandLimit" type="number" min="1" value="6" style="width:58px"></label><label>雇用上限 <input id="settingHireLimit" type="number" min="0" value="3" style="width:58px"></label></div><div class="small" style="margin-top:6px">現在の標準値が入力されています。変更した値はこのゲームに反映されます。</div><div style="margin-top:10px"><strong>キャラクター選択（同じキャラクターは選択不可）</strong><div id="characterSelects" style="margin-top:8px"></div><div class="small">キャラ名 → バージョン → 性別の順に選択します。同じキャラクターは複数プレイヤーで選択できません。追加パックで別バージョンを追加できます。全員共通：毎ターン3D6＋ターン開始時に好きな資源を1つ獲得。</div></div><div class="small" style="margin-top:6px">勝利VPには仮設置のVPも含みます。</div></div>
 <div id="draft" class="hidden"><div class="row"><div><strong>第<span id="round">1</span>巡</strong>　<span id="who">プレイヤー1</span></div><span id="progress" class="muted"></span></div><div id="instruction" style="margin-bottom:10px"></div><div id="cards" class="cards"></div><div id="players" class="players"></div></div>
 <div id="gamestartsetup" class="hidden"><div class="panel"><strong>ゲーム開始時処理</strong><div class="small" style="margin-top:6px">各プレイヤーは資金・兵力・食料を好きな組み合わせで、設定した初期資源数だけ獲得します。その後、キャラクターの「ゲーム開始時」効果を処理し、オープンマーケットを公開します。</div><div id="initialPowerSetup" style="margin-top:12px"></div></div></div>
@@ -112,11 +112,17 @@ const CAST_TYPES={
  CUR2:{id:'CUR2',name:'等価交換・テスト',rarity:'UR',uniqueAbility:'等価交換'}
 };
 function castCopies(id,n){return Array.from({length:n},(_,i)=>({...CAST_TYPES[id],copy:i+1,instanceId:id+'-'+(i+1)}))}
-const EMPLOYEE_DATA=[
- ...castCopies('CN1',4),...castCopies('CN2',4),...castCopies('CN3',4),
- ...castCopies('CR1',3),...castCopies('CR2',3),...castCopies('CR3',3),
- ...castCopies('CSR1',6),...castCopies('CSSR1',3)
-];
+const CAST_GACHA_RATES=[['N',70],['R',16],['SR',10],['SSR',3],['UR',1]];
+// 現在の実装済みガチャ対象はスタンダード8種のみ。CUR1/CUR2は将来・重複テスト用定義で、通常ガチャにはまだ入れない。
+const IMPLEMENTED_CAST_IDS=['CN1','CN2','CN3','CR1','CR2','CR3','CSR1','CSSR1'];
+function implementedCastPool(rarity){return IMPLEMENTED_CAST_IDS.map(id=>CAST_TYPES[id]).filter(x=>x&&x.rarity===rarity)}
+function rollCastRarity(){
+ // 未実装レアリティ（現在はUR）を引いた場合は、実装済みレアリティが出るまで再抽選する。
+ while(true){let r=Math.random()*100,acc=0;for(let [rarity,rate] of CAST_GACHA_RATES){acc+=rate;if(r<acc){if(implementedCastPool(rarity).length)return rarity;break}}}
+}
+function randomCastOfRarity(rarity){let pool=implementedCastPool(rarity);return pool.length?{...pool[Math.floor(Math.random()*pool.length)]}:null}
+function gachaCast(){return randomCastOfRarity(rollCastRarity())}
+
 function charOf(p){return characters[p]||'P1'}
 function characterFamily(id){return CHARACTER_FAMILIES.find(x=>x.id===id)||CHARACTER_FAMILIES[0]}
 function characterVersion(family,id){return family.versions.find(x=>x.id===id)||family.versions[0]}
@@ -230,7 +236,7 @@ function consumeCostChoice(choice,required=null){
 function distinctCostChoices(a,b){return a&&b&&a!==b}
 
 function card(c,count=1,click=false){let e=document.createElement(click?'button':'div');if(click)e.type='button';e.className='card'+(c.image?' hasimg':'');let typeLabel=c.type==='S'?'STANDARD':c.type==='LEGEND'?'LEGEND':'NORMAL';e.innerHTML=(c.image?'<img class="cardimg zoomable" src="'+c.image+'" alt="'+c.name+'"><div class="cardmeta"><strong>'+c.name+'</strong><span class="small">'+typeLabel+'</span></div>':'<span class="small">'+typeLabel+'</span><strong>'+c.name+'</strong>')+(count>1?'<span class="badge">×'+count+'</span>':'');return e}
-function start(){let chosenDeck=q('#deckPreset')?.value||'standard1',slots=Math.max(1,Math.min(30,+q('#settingLegendSlots').value||3));if(chosenDeck==='custom'&&(customDeck.lowerLegendKeys.length<slots||customDeck.upperLegendKeys.length<slots))return alert('カスタムデッキはLower Legend・Upper Legendをそれぞれレジェンド枠数以上選んでください。');q('#endturn').disabled=false;q('#reroll').disabled=false;playerCount=+q('#playerCount').value;gameSettings={winVP:Math.max(1,+q('#settingWinVP').value||20),marketTypes:Math.max(1,+q('#settingMarketTypes').value||8),initialResources:Math.max(0,+q('#settingInitialResources').value||0),handLimit:Math.max(1,+q('#settingHandLimit').value||6),hireLimit:Math.max(0,+q('#settingHireLimit').value||0),legendSlots:Math.max(1,Math.min(30,+q('#settingLegendSlots').value||3)),deckId:q('#deckPreset')?.value||'standard1'};q('#marketTarget').textContent=gameSettings.marketTypes;let groups=[...document.querySelectorAll('#characterSelects .char-family')].slice(0,playerCount).map(x=>x.value);if(new Set(groups).size!==groups.length)return alert('同じキャラクターは選択できません。');characters=selectedCharacterIds().slice(0,playerCount);characterMode=characters[0];endgameStarter=null;endgameRemaining=0;gameEnded=false;q('#gameover').className='notice hidden';let s=sh(STD);packs=Array.from({length:playerCount},()=>s.splice(0,5));unusedStd=s;hands=Array.from({length:playerCount},()=>[]);selected=Array(playerCount).fill(false);powers=Array.from({length:playerCount},()=>({y:0,r:0,p:0}));installed=Array.from({length:playerCount},()=>[]);temporary=Array.from({length:playerCount},()=>[]);elekiterUsed=Array(playerCount).fill(false);commandCounts=Array(playerCount).fill(0);komePlace=20;pendingParkPlayers=[];pendingParkTaken=[];breadDeck=makeBreadDeck();breadDiscard=[];breadHands=Array.from({length:playerCount},()=>[]);employeeDeck=sh(EMPLOYEE_DATA.map(x=>({...x})));employees=Array.from({length:playerCount},()=>[]);debugVP=Array(playerCount).fill(0);graveyardUsed=Array(playerCount).fill(false);publicMarketUsed=Array(playerCount).fill(false);hiredThisTurn=false;pendingSSRBonus=0;pendingCastResourceChoices=[];round=0;viewer=0;deck=[];market=[];discard=[];selectedMarketKey=null;marketUndoHistory=[];commandUndoHistory=[];dialogLog=[];let dlc=q('#dialogLogCount');if(dlc)dlc.textContent='0';turn=0;dice=[];q('#setup').classList.add('hidden');q('#draft').classList.remove('hidden');q('#game').classList.add('hidden');q('#start').textContent='最初から';q('#status').textContent='第1巡：各自5枚から1枚選択。全員終了後に一斉パスします。';renderDraft()}
+function start(){let chosenDeck=q('#deckPreset')?.value||'standard1',slots=Math.max(1,Math.min(30,+q('#settingLegendSlots').value||3));if(chosenDeck==='custom'&&(customDeck.lowerLegendKeys.length<slots||customDeck.upperLegendKeys.length<slots))return alert('カスタムデッキはLower Legend・Upper Legendをそれぞれレジェンド枠数以上選んでください。');q('#endturn').disabled=false;q('#reroll').disabled=false;playerCount=+q('#playerCount').value;gameSettings={winVP:Math.max(1,+q('#settingWinVP').value||20),marketTypes:Math.max(1,+q('#settingMarketTypes').value||8),initialResources:Math.max(0,+q('#settingInitialResources').value||0),handLimit:Math.max(1,+q('#settingHandLimit').value||6),hireLimit:Math.max(0,+q('#settingHireLimit').value||0),legendSlots:Math.max(1,Math.min(30,+q('#settingLegendSlots').value||3)),deckId:q('#deckPreset')?.value||'standard1'};q('#marketTarget').textContent=gameSettings.marketTypes;let groups=[...document.querySelectorAll('#characterSelects .char-family')].slice(0,playerCount).map(x=>x.value);if(new Set(groups).size!==groups.length)return alert('同じキャラクターは選択できません。');characters=selectedCharacterIds().slice(0,playerCount);characterMode=characters[0];endgameStarter=null;endgameRemaining=0;gameEnded=false;q('#gameover').className='notice hidden';let s=sh(STD);packs=Array.from({length:playerCount},()=>s.splice(0,5));unusedStd=s;hands=Array.from({length:playerCount},()=>[]);selected=Array(playerCount).fill(false);powers=Array.from({length:playerCount},()=>({y:0,r:0,p:0}));installed=Array.from({length:playerCount},()=>[]);temporary=Array.from({length:playerCount},()=>[]);elekiterUsed=Array(playerCount).fill(false);commandCounts=Array(playerCount).fill(0);komePlace=20;pendingParkPlayers=[];pendingParkTaken=[];breadDeck=makeBreadDeck();breadDiscard=[];breadHands=Array.from({length:playerCount},()=>[]);employeeDeck=[];employees=Array.from({length:playerCount},()=>[]);debugVP=Array(playerCount).fill(0);graveyardUsed=Array(playerCount).fill(false);publicMarketUsed=Array(playerCount).fill(false);hiredThisTurn=false;pendingSSRBonus=0;pendingCastResourceChoices=[];round=0;viewer=0;deck=[];market=[];discard=[];selectedMarketKey=null;marketUndoHistory=[];commandUndoHistory=[];dialogLog=[];let dlc=q('#dialogLogCount');if(dlc)dlc.textContent='0';turn=0;dice=[];q('#setup').classList.add('hidden');q('#draft').classList.remove('hidden');q('#game').classList.add('hidden');q('#start').textContent='最初から';q('#status').textContent='第1巡：各自5枚から1枚選択。全員終了後に一斉パスします。';renderDraft()}
 function renderDraft(){q('#round').textContent=round+1;q('#who').textContent='プレイヤー'+(viewer+1);q('#progress').textContent=selected.filter(Boolean).length+'/'+playerCount+'人選択済み';q('#instruction').textContent='プレイヤー'+(viewer+1)+'：欲しいカードそのものをタップして選択';let e=q('#cards');e.innerHTML='';if(!selected[viewer])packs[viewer].forEach((c,i)=>{let w=document.createElement('div');w.className='draft-card-wrap';let b=card(c,1,true);let ef=document.createElement('div');ef.className='card-effect-inline';ef.textContent=effectText(c);b.appendChild(ef);b.onclick=()=>pick(i);w.appendChild(b);e.appendChild(w)});let ps=q('#players');ps.innerHTML='';hands.forEach((h,p)=>{let b=document.createElement('button');b.type='button';b.className='player '+(p===viewer?'active':'');b.innerHTML='<strong>P'+(p+1)+'</strong><div class="muted">獲得 '+h.length+'/3</div><div class="small">'+(selected[p]?'選択済み':'未選択')+'</div>';b.onclick=()=>{viewer=p;renderDraft()};ps.appendChild(b)})}
 function pick(i){if(selected[viewer])return;hands[viewer].push(packs[viewer][i]);packs[viewer].splice(i,1);selected[viewer]=true;if(selected.every(Boolean)){if(round===2){setupGame();return}let old=packs.map(x=>[...x]),next=Array.from({length:playerCount},()=>[]);for(let p=0;p<playerCount;p++)next[(p+1)%playerCount]=old[p];packs=next;round++;selected=Array(playerCount).fill(false);viewer=0;q('#status').textContent='残り'+packs[0].length+'枚を一斉に次のプレイヤーへ渡しました。';renderDraft();return}let n=viewer;do{n=(n+1)%playerCount}while(selected[n]);viewer=n;renderDraft()}
 function drawOne(){if(!deck.length&&discard.length){deck=sh(discard);discard=[]}let c=deck.shift()||null;if(c&&deck.length===0&&discard.length){deck=sh(discard);discard=[]}return c}
@@ -417,14 +423,7 @@ function sameUniqueAbilityAsLord(e,p=turn){
  let lord=CHARACTER_DATA[charOf(p)];
  return !!(e&&e.uniqueAbility&&lord&&lord.uniqueAbility&&e.uniqueAbility===lord.uniqueAbility);
 }
-function redrawSameRarityCast(e){
- let candidates=employeeDeck.map((x,i)=>({x,i})).filter(v=>v.x.rarity===e.rarity);
- if(!candidates.length)return null;
- let pick=candidates[Math.floor(Math.random()*candidates.length)];
- let next=employeeDeck.splice(pick.i,1)[0];
- employeeDeck.unshift(e); // 引き直した元のキャストは人材山札へ戻す。
- return next;
-}
+function redrawSameRarityCast(e){return randomCastOfRarity(e.rarity)}
 function finalizeHire(e,label=''){
  employees[turn].push(e);hiredThisTurn=true;
  triggerNotices.push((label||('P'+(turn+1)+'が '))+e.rarity+'「'+e.name+'」を雇用しました。ダイス増加は次の自分のターンから適用されます。');renderGame();
@@ -432,14 +431,13 @@ function finalizeHire(e,label=''){
 function hireEmployee(dieId){
  if(hiredThisTurn)return alert('雇用は1ターンに1回までです。');
  if((employees[turn]||[]).length>=gameSettings.hireLimit)return alert('雇用できる部下は最大'+gameSettings.hireLimit+'人です。');
- if(!employeeDeck.length)return alert('雇用できる人材が残っていません。');
  if(powers[turn].y<5)return alert('雇用には資金5が必要です。');
  let d=useDie(dieId);if(!d)return alert('未使用の実サイコロを1個選んでください。');
- powers[turn].y-=5;let e=employeeDeck.pop();
+ powers[turn].y-=5;let e=gachaCast();if(!e)return alert('雇用できるキャストが実装されていません。');
  // 領主とキャストの固有能力が同じ場合のみ、任意で同レアリティ再雇用できる。
  // 現在のスタンダードキャストにはuniqueAbilityを設定していないため、追加パック等で同名能力が登場した時だけ発動する。
  if(sameUniqueAbilityAsLord(e)){
-  let canRedraw=employeeDeck.some(x=>x.rarity===e.rarity);
+  let canRedraw=implementedCastPool(e.rarity).length>0;
   if(canRedraw&&confirm(e.rarity+'「'+e.name+'」の固有能力は領主と同じです。\nこのキャストを雇用せず、同じレアリティでもう一度雇用しますか？')){
    let next=redrawSameRarityCast(e);
    if(next)e=next;
@@ -450,14 +448,14 @@ function hireEmployee(dieId){
 function gainSSRDie(value){if(pendingSSRBonus<=0)return;let v=+value;if(v<1||v>6)return;let id=dice.length?Math.max(...dice.map(x=>x.id))+1:1;dice.push({id,value:v,used:false,source:'SSR'});pendingSSRBonus--;renderGame()}
 function gainCastResource(color){if(!pendingCastResourceChoices.length)return;let x=pendingCastResourceChoices.shift();powers[turn][color]+=x.amount;renderGame()}
 function renderHireActions(){let box=q('#hireactions'),list=q('#employees');if(!box||!list)return;box.innerHTML='';list.innerHTML='';let staff=employees[turn]||[];
- list.innerHTML='<strong>雇用中：</strong>'+(staff.length?staff.map(e=>e.rarity+' '+e.name).join(' ／ '):'なし')+'（'+staff.length+'/'+gameSettings.hireLimit+'）　人材山札 '+employeeDeck.length+'人';
- if(staff.length>=gameSettings.hireLimit){box.textContent='雇用枠が上限です。';}else if(hiredThisTurn){box.textContent='このターンは雇用済みです。';}else{let ds=dieSelect(unusedDice()),b=document.createElement('button');b.className='secondary';b.textContent='資金5＋実サイコロ1個でランダム雇用';b.disabled=powers[turn].y<5||!unusedDice().length||!employeeDeck.length;b.onclick=()=>hireEmployee(ds.value);box.append(ds,b);}
+ list.innerHTML='<strong>雇用中：</strong>'+(staff.length?staff.map(e=>e.rarity+' '+e.name).join(' ／ '):'なし')+'（'+staff.length+'/'+gameSettings.hireLimit+'）　ガチャ N70% / R16% / SR10% / SSR3% / UR1%（UR未実装）';
+ if(staff.length>=gameSettings.hireLimit){box.textContent='雇用枠が上限です。';}else if(hiredThisTurn){box.textContent='このターンは雇用済みです。';}else{let ds=dieSelect(unusedDice()),b=document.createElement('button');b.className='secondary';b.textContent='資金5＋実サイコロ1個でランダム雇用';b.disabled=powers[turn].y<5||!unusedDice().length;b.onclick=()=>hireEmployee(ds.value);box.append(ds,b);}
 
 }
 function debugNamedHire(id){
- let i=employeeDeck.findIndex(e=>e.id===id);if(i<0)return alert('その人材は人材山札にありません。');
+ let base=CAST_TYPES[id];if(!base||!IMPLEMENTED_CAST_IDS.includes(id))return alert('そのキャストは現在の通常ガチャ対象ではありません。');
  if((employees[turn]||[]).length>=gameSettings.hireLimit)return alert('雇用枠が'+gameSettings.hireLimit+'人埋まっています。');
- let e=employeeDeck.splice(i,1)[0];employees[turn].push(e);triggerNotices.push('デバッグ：'+e.rarity+'「'+e.name+'」を指名雇用しました。');renderGame();
+ let e={...base};employees[turn].push(e);triggerNotices.push('デバッグ：'+e.rarity+'「'+e.name+'」を指名雇用しました。');renderGame();
 }
 function debugGainOrder(v){
  v=+v;let i=breadDeck.findIndex(b=>b.value===v);if(i>=0){breadHands[turn].push(breadDeck.splice(i,1)[0]);renderGame();return}
@@ -492,7 +490,7 @@ function showDebugCardCreator(){
 function renderDebugActions(){
  let box=q('#debugactions');if(!box)return;box.innerHTML='';
  let create=document.createElement('button');create.className='secondary';create.textContent='カードを無から生成';create.onclick=showDebugCardCreator;box.appendChild(create);
- let hire=document.createElement('div');hire.style.margin='8px 0 5px';let hs=document.createElement('select');employeeDeck.slice().sort((a,b)=>a.rarity.localeCompare(b.rarity)||a.name.localeCompare(b.name)).forEach(e=>{let o=document.createElement('option');o.value=e.id;o.textContent=e.rarity+' '+e.name;hs.appendChild(o)});let hb=document.createElement('button');hb.className='secondary';hb.textContent='指名雇用';hb.disabled=!employeeDeck.length||(employees[turn]||[]).length>=gameSettings.hireLimit;hb.onclick=()=>debugNamedHire(hs.value);hire.append('人材 ',hs,' ',hb);box.appendChild(hire);
+ let hire=document.createElement('div');hire.style.margin='8px 0 5px';let hs=document.createElement('select');IMPLEMENTED_CAST_IDS.map(id=>CAST_TYPES[id]).sort((a,b)=>a.rarity.localeCompare(b.rarity)||a.name.localeCompare(b.name)).forEach(e=>{let o=document.createElement('option');o.value=e.id;o.textContent=e.rarity+' '+e.name;hs.appendChild(o)});let hb=document.createElement('button');hb.className='secondary';hb.textContent='指名雇用';hb.disabled=(employees[turn]||[]).length>=gameSettings.hireLimit;hb.onclick=()=>debugNamedHire(hs.value);hire.append('人材 ',hs,' ',hb);box.appendChild(hire);
  let order=document.createElement('div');order.style.margin='5px 0';let os=document.createElement('select');for(let v=1;v<=6;v++){let o=document.createElement('option');o.value=v;o.textContent='命令書 '+v;os.appendChild(o)}let ob=document.createElement('button');ob.className='secondary';ob.textContent='獲得';ob.onclick=()=>debugGainOrder(os.value);order.append(os,' ',ob);box.appendChild(order);
  let vp=document.createElement('button');vp.className='secondary';vp.textContent='+20VP';vp.onclick=()=>{debugVP[turn]=(debugVP[turn]||0)+20;renderGame()};
  let tok=document.createElement('button');tok.className='secondary';tok.style.marginLeft='6px';tok.textContent='資金・食料・兵力 +10ずつ';tok.onclick=()=>{powers[turn].y+=10;powers[turn].p+=10;powers[turn].r+=10;renderGame()};box.append(vp,tok);
@@ -592,13 +590,13 @@ function installNewNormal(handIndex,choices){let c=hands[turn][handIndex],p=powe
 let graveyardUsed=[],publicMarketUsed=[];
 function useGraveyard(cardIndex){if(graveyardUsed[turn])return alert('荒らされた墓地は1ターンに1回までです。');if(!discard.length)return alert('捨て札がありません。');let colors=[['y','資金'],['p','食料'],['r','兵力']].filter(([k])=>powers[turn][k]>0);if(!colors.length)return alert('消費できる資源がありません。');let opts=discard.map((c,i)=>({c,i,label:c.name}));chooseLegendCard('荒らされた墓地','回収するカードをタップしてください。',opts,o=>{let m=q('#legendChoiceModal'),grid=q('#legendChoiceCards');q('#legendChoiceTitle').textContent='消費する資源';q('#legendChoiceNote').textContent='資金・食料・兵力のうち1個をタップして消費します。';grid.innerHTML='';colors.forEach(([k,n])=>{let b=document.createElement('button');b.className='secondary';b.style.padding='14px';b.textContent=n+'（所持 '+powers[turn][k]+'）';b.onclick=()=>{m.classList.add('hidden');powers[turn][k]--;hands[turn].push(discard.splice(o.i,1)[0]);graveyardUsed[turn]=true;renderGame()};grid.appendChild(b)});q('#legendChoiceCancel').onclick=()=>m.classList.add('hidden');m.classList.remove('hidden')},()=>renderGame())}
 function usePublicMarket(){if(publicMarketUsed[turn])return alert('公益場は1ターンに1回までです。');if(!hands[turn].length)return alert('交換する手札がありません。');let g=groups();if(!g.size)return alert('市場にカードがありません。');let hraw=prompt('市場へ出す手札の番号を入力してください。\n'+hands[turn].map((c,i)=>(i+1)+': '+c.name).join('\n'));if(hraw===null)return;let hi=Number(hraw)-1;if(!Number.isInteger(hi)||hi<0||hi>=hands[turn].length)return alert('正しい手札番号を入力してください。');let keys=[...g.keys()];let mraw=prompt('手札に加える市場枠の番号を入力してください。\n'+keys.map((k,i)=>(i+1)+': '+g.get(k)[0].name+' ×'+g.get(k).length).join('\n'));if(mraw===null)return;let mi=Number(mraw)-1;if(!keys[mi])return alert('正しい市場枠番号を入力してください。');let key=keys[mi];blockAllMarketUndo('公益場で市場が変更されました。');let got=market.filter(c=>c.key===key),out=hands[turn].splice(hi,1)[0];market=market.filter(c=>c.key!==key);hands[turn].push(...got);market.push(out);publicMarketUsed[turn]=true;renderGame()}
-function useScout(cardIndex){if(hiredThisTurn)return alert('雇用は1ターンに1回までです。');if((employees[turn]||[]).length>=gameSettings.hireLimit)return alert('雇用枠が上限です。');if(!employeeDeck.length)return alert('雇用できる人材が残っていません。');let c=installed[turn][cardIndex];if(!c||c.special!=='scout')return;discard.push(installed[turn].splice(cardIndex,1)[0]);let e=employeeDeck.pop();employees[turn].push(e);hiredThisTurn=true;triggerNotices.push('スカウト：'+e.rarity+'「'+e.name+'」を雇用しました。');renderGame()}
+function useScout(cardIndex){if(hiredThisTurn)return alert('雇用は1ターンに1回までです。');if((employees[turn]||[]).length>=gameSettings.hireLimit)return alert('雇用枠が上限です。');let c=installed[turn][cardIndex];if(!c||c.special!=='scout')return;discard.push(installed[turn].splice(cardIndex,1)[0]);let e=gachaCast();if(!e)return alert('雇用できるキャストが実装されていません。');if(sameUniqueAbilityAsLord(e)&&implementedCastPool(e.rarity).length&&confirm(e.rarity+'「'+e.name+'」の固有能力は領主と同じです。\nこのキャストを雇用せず、同じレアリティでもう一度雇用しますか？'))e=redrawSameRarityCast(e)||e;employees[turn].push(e);hiredThisTurn=true;triggerNotices.push('スカウト：'+e.rarity+'「'+e.name+'」を雇用しました。');renderGame()}
 function renderNewNormalInstalledActions(ic){
  installed[turn].forEach((c,i)=>{
   if(['famine','swordhunt','laws','landgrab','bandit'].includes(c.special)){let d=document.createElement('div');d.style.margin='5px 0';d.textContent=c.name+'：'+effectText(c).replace(/^設置：[^。]+。/,'');ic.appendChild(d)}
   if(c.special==='graveyard'){let b=document.createElement('button');b.className='secondary';b.style.margin='5px';b.textContent=graveyardUsed[turn]?'荒らされた墓地：使用済み':'荒らされた墓地を使用';b.disabled=graveyardUsed[turn]||!discard.length;b.onclick=()=>useGraveyard(i);ic.appendChild(b)}
   if(c.special==='publicmarket'){let b=document.createElement('button');b.className='secondary';b.style.margin='5px';b.textContent=publicMarketUsed[turn]?'公益場：使用済み':'公益場を使用';b.disabled=publicMarketUsed[turn]||!hands[turn].length||!market.length;b.onclick=()=>usePublicMarket();ic.appendChild(b)}
-  if(c.special==='scout'){let b=document.createElement('button');b.className='secondary';b.style.margin='5px';b.textContent='スカウトを捨てて雇用';b.disabled=hiredThisTurn||(employees[turn]||[]).length>=gameSettings.hireLimit||!employeeDeck.length;b.onclick=()=>useScout(i);ic.appendChild(b)}
+  if(c.special==='scout'){let b=document.createElement('button');b.className='secondary';b.style.margin='5px';b.textContent='スカウトを捨てて雇用';b.disabled=hiredThisTurn||(employees[turn]||[]).length>=gameSettings.hireLimit;b.onclick=()=>useScout(i);ic.appendChild(b)}
  })
 }
 function installElekiter(handIndex,a,b){let p=powers[turn];if(p.y<1||p.r<1||p.p<1)return alert('設置には資金・兵力・食料のパワーが1個ずつ必要です。');if(!distinctCostChoices(a,b))return alert('異なる2枚/2個を選んでください。');if(!consumeCostChoice(a,2)||!consumeCostChoice(b,5))return alert('出目2と出目5を満たす実サイコロまたは命令書を選んでください。');p.y--;p.r--;p.p--;registerInstallation(turn,hands[turn].splice(handIndex,1)[0]);renderGame()}
