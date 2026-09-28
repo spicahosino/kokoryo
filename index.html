@@ -38,7 +38,7 @@ body{padding:6px;background:#ecebe7;overflow-x:hidden}.app{max-width:1180px;padd
 @media(max-width:700px){.deck-editor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head><body><div class="app">
-<div class="top"><div><h2 style="margin:0">ここから先は、僕の領地</h2><div class="version">オリジナル版 Ver.2.18</div><div id="status" class="muted">オリジナル版テスト</div></div><button id="start" type="button" class="primary">ゲーム開始</button></div>
+<div class="top"><div><h2 style="margin:0">ここから先は、僕の領地</h2><div class="version">オリジナル版 Ver.2.18.1</div><div id="status" class="muted">オリジナル版テスト</div></div><button id="start" type="button" class="primary">ゲーム開始</button></div>
 <div id="setup" class="setup"><div><strong>ゲーム設定</strong></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px"><label for="playerCount">プレイ人数</label><select id="playerCount"><option value="2">2人</option><option value="3">3人</option><option value="4" selected>4人</option><option value="5">5人</option><option value="6">6人</option></select><label for="deckPreset">使用デッキ</label><select id="deckPreset"><option value="standard1" selected>スタンダード1（固定）</option><option value="custom">カスタムデッキ</option></select><button id="editDeck" type="button" class="secondary" disabled>デッキ編集</button><label>レジェンド枠 <input id="settingLegendSlots" type="number" min="1" max="30" value="3" style="width:52px"></label><label>勝利VP <input id="settingWinVP" type="number" min="1" value="20" style="width:58px"></label><label>市場公開 <input id="settingMarketTypes" type="number" min="1" value="8" style="width:58px"></label><label>初期資源 <input id="settingInitialResources" type="number" min="0" value="4" style="width:58px"></label><label>手札上限 <input id="settingHandLimit" type="number" min="1" value="6" style="width:58px"></label><label>雇用上限 <input id="settingHireLimit" type="number" min="0" value="3" style="width:58px"></label></div><div class="small" style="margin-top:6px">現在の標準値が入力されています。変更した値はこのゲームに反映されます。</div><div style="margin-top:10px"><strong>キャラクター選択（同じキャラクターは選択不可）</strong><div id="characterSelects" style="margin-top:8px"></div><div class="small">デフォルト領主A～Fから選択します。全員共通：毎ターン3D6＋ターン開始時に好きな資源を1つ獲得。</div></div><div class="small" style="margin-top:6px">勝利VPには仮設置のVPも含みます。</div></div>
 <div id="draft" class="hidden"><div class="row"><div><strong>第<span id="round">1</span>巡</strong>　<span id="who">プレイヤー1</span></div><span id="progress" class="muted"></span></div><div id="instruction" style="margin-bottom:10px"></div><div id="cards" class="cards"></div><div id="players" class="players"></div></div>
 <div id="gamestartsetup" class="hidden"><div class="panel"><strong>ゲーム開始時処理</strong><div class="small" style="margin-top:6px">各プレイヤーは資金・兵力・食料を好きな組み合わせで、設定した初期資源数だけ獲得します。その後、キャラクターの「ゲーム開始時」効果を処理し、オープンマーケットを公開します。</div><div id="initialPowerSetup" style="margin-top:12px"></div></div></div>
@@ -386,6 +386,9 @@ function debugCreateCard(base){
  if(!base)return;
  let c={...base,id:base.key+'-DBG-'+(++debugCardSerial)};
  registerInstallation(turn,c);
+ resolveOnInstall(c,turn);
+ if(c.special==='eggharp')resolveEggHarp(turn);
+ if(c.special==='amanomurakumo'){triggerNotices.push('デバッグ：「'+c.name+'」を無から生成して設置しました。');q('#debugCardModal')?.classList.add('hidden');renderGame();finishGame();return}
  triggerNotices.push('デバッグ：「'+c.name+'」を無から生成して設置しました。');
  q('#debugCardModal')?.classList.add('hidden');
  renderGame();
