@@ -20,7 +20,7 @@ body{padding:6px;background:#ecebe7;overflow-x:hidden}.app{max-width:1180px;padd
 #gameover.endgame-final strong:first-child{font-size:24px;display:block;margin-bottom:10px}
 @media(max-width:700px){#gameover.endgame-progress{top:4px;width:92vw;padding:8px;font-size:12px}#gameover.endgame-final{width:86vw;padding:14px;font-size:14px}#gameover.endgame-final strong:first-child{font-size:21px}}
 </style></head><body><div class="app">
-<div class="top"><div><h2 style="margin:0">ここから先は、僕の領地</h2><div class="version">オリジナル版 Ver.2.5.3</div><div id="status" class="muted">オリジナル版テスト</div></div><button id="start" type="button" class="primary">ゲーム開始</button></div>
+<div class="top"><div><h2 style="margin:0">ここから先は、僕の領地</h2><div class="version">オリジナル版 Ver.2.6</div><div id="status" class="muted">オリジナル版テスト</div></div><button id="start" type="button" class="primary">ゲーム開始</button></div>
 <div id="setup" class="setup"><div><strong>ゲーム設定</strong></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px"><label for="playerCount">プレイ人数</label><select id="playerCount"><option value="2">2人</option><option value="3">3人</option><option value="4" selected>4人</option><option value="5">5人</option><option value="6">6人</option></select><label>勝利VP <input id="settingWinVP" type="number" min="1" value="20" style="width:58px"></label><label>市場公開 <input id="settingMarketTypes" type="number" min="1" value="8" style="width:58px"></label><label>初期資源 <input id="settingInitialResources" type="number" min="0" value="4" style="width:58px"></label><label>手札上限 <input id="settingHandLimit" type="number" min="1" value="6" style="width:58px"></label><label>雇用上限 <input id="settingHireLimit" type="number" min="0" value="3" style="width:58px"></label></div><div class="small" style="margin-top:6px">現在の標準値が入力されています。変更した値はこのゲームに反映されます。</div><div style="margin-top:10px"><strong>キャラクター選択（同じキャラクターは選択不可）</strong><div id="characterSelects" style="margin-top:8px"></div><div class="small">デフォルト領主A～Fから選択します。全員共通：毎ターン3D6＋ターン開始時に好きな資源を1つ獲得。</div></div><div class="small" style="margin-top:6px">勝利VPには仮設置のVPも含みます。</div></div>
 <div id="draft" class="hidden"><div class="row"><div><strong>第<span id="round">1</span>巡</strong>　<span id="who">プレイヤー1</span></div><span id="progress" class="muted"></span></div><div id="instruction" style="margin-bottom:10px"></div><div id="cards" class="cards"></div><div id="players" class="players"></div></div>
 <div id="gamestartsetup" class="hidden"><div class="panel"><strong>ゲーム開始時処理</strong><div class="small" style="margin-top:6px">各プレイヤーは資金・兵力・食料を好きな組み合わせで、設定した初期資源数だけ獲得します。その後、キャラクターの「ゲーム開始時」効果を処理し、オープンマーケットを公開します。</div><div id="initialPowerSetup" style="margin-top:12px"></div></div></div>
@@ -122,13 +122,43 @@ function pick(i){if(selected[viewer])return;hands[viewer].push(packs[viewer][i])
 function drawOne(){if(!deck.length&&discard.length){deck=sh(discard);discard=[]}let c=deck.shift()||null;if(c&&deck.length===0&&discard.length){deck=sh(discard);discard=[]}return c}
 function refillTo8(){let keys=new Set(market.map(c=>c.key));while(keys.size<gameSettings.marketTypes){let c=drawOne();if(!c)break;market.push(c);keys.add(c.key)}}
 function initLegends(){legends=[
-{id:'u1',tier:'upper',col:0,name:'上位レジェンド①',vp:5,taken:false,unlocked:false},{id:'u2',tier:'upper',col:1,name:'上位レジェンド②',vp:5,taken:false,unlocked:false},{id:'u3',tier:'upper',col:2,name:'上位レジェンド③',vp:5,taken:false,unlocked:false},
+{id:'u1',tier:'upper',col:0,name:'天叢雲剣',vp:-5,taken:false,unlocked:false,special:'amanomurakumo'},
+{id:'u2',tier:'upper',col:1,name:'五月の女王',vp:8,taken:false,unlocked:false,special:'mayqueen'},
+{id:'u3',tier:'upper',col:2,name:'エッグ＆ハープ',vp:0,taken:false,unlocked:false,special:'eggharp'},
 {id:'l1',tier:'lower',col:0,name:'ミスリルラッシュ',vp:5,taken:false,unlocked:true,special:'legendmine',faces:[1,2],target:'鉱山',resource:'資金'},
 {id:'l2',tier:'lower',col:1,name:'ユグドラシル',vp:5,taken:false,unlocked:true,special:'legendfarm',faces:[3,4],target:'農場',resource:'食料'},
 {id:'l3',tier:'lower',col:2,name:'エインヘリヤル',vp:5,taken:false,unlocked:true,special:'legendbarracks',faces:[5,6],target:'兵舎',resource:'兵力'}]}
 function legendCostChoices(L){let rs=[];unusedDice().filter(d=>L.faces.includes(d.value)).forEach(d=>rs.push({kind:'die',id:d.id,label:'🎲'+d.value+'（#'+d.id+'）'}));breadHands[turn].forEach((b,i)=>{let v=b.value;if(v==='any'||L.faces.includes(v))rs.push({kind:'bread',i,label:'命令書'+breadLabel(b)});});return rs}
-function takeLegend(id){if(legendTakenThisTurn)return alert('レジェンドカードは1ターンに1枚までです。');let L=legends.find(x=>x.id===id);if(!L||L.taken)return;if(!L.unlocked)return alert('まだ解放されていません。');if(L.tier==='lower'){let ri=L.resource==='資金'?'y':L.resource==='食料'?'w':'r';if(powers[turn][ri]<8)return alert(L.resource+'8が必要です。');let rs=legendCostChoices(L);if(rs.length<3)return alert('対応するサイコロ／命令書が3個必要です。');let chosen=rs.slice(0,3);chosen.filter(x=>x.kind==='die').forEach(x=>useDie(x.id));chosen.filter(x=>x.kind==='bread').map(x=>x.i).sort((a,b)=>b-a).forEach(i=>breadDiscard.push(breadHands[turn].splice(i,1)[0]));recycleBreadIfEmpty();powers[turn][ri]-=8}else{let rs=[];unusedDice().forEach(d=>rs.push({kind:'die',id:d.id}));breadHands[turn].forEach((b,i)=>rs.push({kind:'bread',i}));if(rs.length<3)return alert('未使用のサイコロ／命令書が3個必要です。');let chosen=rs.slice(0,3);chosen.filter(x=>x.kind==='die').forEach(x=>useDie(x.id));chosen.filter(x=>x.kind==='bread').map(x=>x.i).sort((a,b)=>b-a).forEach(i=>breadDiscard.push(breadHands[turn].splice(i,1)[0]));recycleBreadIfEmpty()}L.taken=true;legendTakenThisTurn=true;if(L.tier==='lower'){let U=legends.find(x=>x.tier==='upper'&&x.col===L.col);if(U)U.unlocked=true}registerInstallation(turn,{key:'LEG-'+L.id,name:L.name,type:'LEGEND',special:L.special||'legend',vp:L.vp,effectText:L.tier==='lower'?L.target+'の獲得効果+3・VP+2':'現在は効果なし'});triggerNotices.push(L.name+'を獲得しました。');renderGame()}
-function renderLegends(){let box=q('#legendArea');if(!box)return;box.innerHTML='';for(let col=0;col<3;col++){let w=document.createElement('div');w.className='card';['upper','lower'].forEach(tier=>{let L=legends.find(x=>x.col===col&&x.tier===tier),d=document.createElement('div');d.style.marginBottom='12px';let desc=tier==='lower'?'🎲'+L.faces.join('/')+'×3＋'+L.resource+'8 ／ '+L.target+'：'+L.resource+'獲得+3・VP+2':'サイコロANY×3';if(L.taken)d.innerHTML='<strong>'+L.name+'</strong><div class="small">獲得済み・'+L.vp+'VP</div><div class="small">'+desc+'</div>';else{let locked=tier==='upper'&&!L.unlocked;d.innerHTML='<strong>'+L.name+'</strong><div class="small">'+L.vp+'VP ／ '+desc+(locked?' ／ 未解放':'')+'</div>';let b=document.createElement('button');b.className='secondary';b.textContent=locked?'未解放':'獲得';b.disabled=locked||legendTakenThisTurn;b.onclick=()=>takeLegend(L.id);d.appendChild(b)}w.appendChild(d)});box.appendChild(w)}}
+function consumeLegendItems(items){
+ let breadIdx=items.filter(x=>x.kind==='bread').map(x=>x.i).sort((a,b)=>b-a);
+ items.filter(x=>x.kind==='die').forEach(x=>useDie(x.id));
+ breadIdx.forEach(i=>breadDiscard.push(breadHands[turn].splice(i,1)[0]));recycleBreadIfEmpty();
+}
+function legendSameFaceChoices(face){let rs=[];unusedDice().filter(d=>d.value===face).forEach(d=>rs.push({kind:'die',id:d.id}));breadHands[turn].forEach((b,i)=>{if(b.value==='any'||b.value===face)rs.push({kind:'bread',i})});return rs}
+function takeLegend(id){
+ if(legendTakenThisTurn)return alert('レジェンドカードは1ターンに1枚までです。');let L=legends.find(x=>x.id===id);if(!L||L.taken)return;if(!L.unlocked)return alert('まだ解放されていません。');
+ if(L.tier==='lower'){
+  let ri=L.resource==='資金'?'y':L.resource==='食料'?'p':'r';if(powers[turn][ri]<8)return alert(L.resource+'8が必要です。');let rs=legendCostChoices(L);if(rs.length<3)return alert('対応するサイコロ／命令書が3個必要です。');consumeLegendItems(rs.slice(0,3));powers[turn][ri]-=8;
+ }else if(L.special==='amanomurakumo'){
+  let face=[2,3,4,5].find(v=>legendSameFaceChoices(v).length>=8);if(!face)return alert('2・3・4・5のいずれか同じ出目を8個そろえる必要があります。');consumeLegendItems(legendSameFaceChoices(face).slice(0,8));
+ }else if(L.special==='mayqueen'){
+  if(powers[turn].y<16)return alert('資金16が必要です。');let rs=legendSameFaceChoices(2);if(rs.length<3)return alert('出目2のサイコロ／命令書が3個必要です。');consumeLegendItems(rs.slice(0,3));powers[turn].y-=16;
+ }else if(L.special==='eggharp'){
+  if(powers[turn].r<12)return alert('兵力12が必要です。');let rs=legendSameFaceChoices(5);if(rs.length<3)return alert('出目5のサイコロ／命令書が3個必要です。');consumeLegendItems(rs.slice(0,3));powers[turn].r-=12;
+ }
+ L.taken=true;legendTakenThisTurn=true;if(L.tier==='lower'){let U=legends.find(x=>x.tier==='upper'&&x.col===L.col);if(U)U.unlocked=true}
+ let ef=L.tier==='lower'?L.target+'の獲得効果+3・VP+2':effectText({special:L.special});let card={key:'LEG-'+L.id,name:L.name,type:'LEGEND',special:L.special||'legend',vp:L.vp,effectText:ef};registerInstallation(turn,card);triggerNotices.push(L.name+'を獲得しました。');
+ if(L.special==='eggharp')resolveEggHarp(turn);
+ if(L.special==='amanomurakumo'){renderGame();finishGame();return}
+ renderGame()
+}
+function resolveEggHarp(owner){
+ for(let n=0;n<4;n++){
+  let opts=[];hands[owner].forEach((c,i)=>opts.push({src:'hand',i,c,label:'手札：'+c.name}));market.forEach((c,i)=>opts.push({src:'market',i,c,label:'市場：'+c.name}));if(!opts.length)break;
+  let msg='エッグ＆ハープ：コストを無視して設置するカードを選択（'+(n+1)+'/4）\n'+opts.map((x,i)=>(i+1)+': '+x.label).join('\n');let raw=prompt(msg,'1');if(raw===null)break;let k=Number(raw)-1;if(!Number.isInteger(k)||!opts[k]){n--;alert('番号を正しく入力してください。');continue}let o=opts[k],c;if(o.src==='hand')c=hands[owner].splice(o.i,1)[0];else c=market.splice(o.i,1)[0];registerInstallation(owner,c);resolveOnInstall(c,owner);
+ }
+}
+function renderLegends(){let box=q('#legendArea');if(!box)return;box.innerHTML='';for(let col=0;col<3;col++){let w=document.createElement('div');w.className='card';['upper','lower'].forEach(tier=>{let L=legends.find(x=>x.col===col&&x.tier===tier),d=document.createElement('div');d.style.marginBottom='12px';let desc;if(tier==='lower')desc='🎲'+L.faces.join('/')+'×3＋'+L.resource+'8 ／ '+L.target+'：'+L.resource+'獲得+3・VP+2';else if(L.special==='amanomurakumo')desc='🎲2～5のいずれか同じ目×8 ／ 設置時に即ゲーム終了';else if(L.special==='mayqueen')desc='🎲2×3＋資金16 ／ ターン開始時効果を追加2回';else desc='🎲5×3＋兵力12 ／ 4枚まで無料設置';if(L.taken)d.innerHTML='<strong>'+L.name+'</strong><div class="small">獲得済み・'+L.vp+'VP</div><div class="small">'+desc+'</div>';else{let locked=tier==='upper'&&!L.unlocked;d.innerHTML='<strong>'+L.name+'</strong><div class="small">'+L.vp+'VP ／ '+desc+(locked?' ／ 未解放':'')+'</div>';let b=document.createElement('button');b.className='secondary';b.textContent=locked?'未解放':'獲得';b.disabled=locked||legendTakenThisTurn;b.onclick=()=>takeLegend(L.id);d.appendChild(b)}w.appendChild(d)});box.appendChild(w)}}
 function setupGame(){initLegends();let leftovers=packs.flat();deck=sh([...unusedStd,...leftovers,...NORMAL]);market=[];q('#draft').classList.add('hidden');q('#gamestartsetup').classList.remove('hidden');q('#game').classList.add('hidden');q('#status').textContent='ゲーム開始時処理：各プレイヤーの初期'+gameSettings.initialResources+'資源を選択してください。';renderInitialPowerSetup()}
 function renderInitialPowerSetup(){let box=q('#initialPowerSetup');box.innerHTML='';for(let p=0;p<playerCount;p++){let row=document.createElement('div');row.className='actionblock';row.innerHTML='<strong>P'+(p+1)+'（'+CHARACTER_DATA[charOf(p)].name+'）</strong> ';let sy=document.createElement('select'),sr=document.createElement('select'),sp=document.createElement('select');[sy,sr,sp].forEach((sel,i)=>{for(let n=0;n<=gameSettings.initialResources;n++){let o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o)}sel.dataset.color=['y','r','p'][i]});sy.value=gameSettings.initialResources;row.append(' 資金',sy,' 兵力',sr,' 食料',sp);box.appendChild(row)}let b=document.createElement('button');b.className='primary';b.style.marginTop='14px';b.textContent='初期パワーを確定してゲーム開始';b.onclick=confirmInitialPowers;box.appendChild(b)}
 function resolveGameStartCharacterEffects(){/* 現在実装済み3キャラにはゲーム開始時効果なし。今後ここへ追加 */ }
@@ -188,6 +218,24 @@ function resolveTurnStartEffects(){
  if(greaterMine||greaterFarm||greaterBarracks)triggerNotices.push('上位施設のターン開始時効果：'+(greaterMine?'資金+'+(greaterMine*3)+' ':'')+(greaterFarm?'食料+'+(greaterFarm*3)+' ':'')+(greaterBarracks?'兵力+'+(greaterBarracks*3)+' ':''));
  if(greaterCommandDraws.length)triggerNotices.push('大司令部：命令書「'+greaterCommandDraws.join('」「')+'」を獲得しました。');
  if(churchDraws.length)triggerNotices.push('教会：山札から「'+churchDraws.join('」「')+'」を引きました。');
+ resolveMayQueen();
+}
+function resolveMayQueen(){
+ let queens=installed[turn].filter(c=>c.special==='mayqueen').length;for(let qn=0;qn<queens;qn++){
+  let opts=installed[turn].filter(c=>c.special!=='mayqueen'&&['mine','farm','barracks','commandroom','church','greatermine','greaterfarm','greaterbarracks','greatercommand','bandit'].includes(c.special));if(!opts.length)continue;
+  let raw=prompt('五月の女王：ターン開始時効果を追加で2回発動するカードを選んでください。\n'+opts.map((c,i)=>(i+1)+': '+c.name).join('\n'),'1');if(raw===null)continue;let c=opts[Number(raw)-1];if(!c){alert('番号が正しくないため、五月の女王の追加発動を行いません。');continue}repeatTurnStartEffect(c,2);
+ }
+}
+function repeatTurnStartEffect(c,times){
+ let mineBoost=installed[turn].some(x=>x.special==='legendmine')?3:0,farmBoost=installed[turn].some(x=>x.special==='legendfarm')?3:0,barracksBoost=installed[turn].some(x=>x.special==='legendbarracks')?3:0;
+ for(let n=0;n<times;n++){
+  if(c.special==='mine')powers[turn].y+=1+mineBoost;else if(c.special==='farm')powers[turn].p+=1+farmBoost;else if(c.special==='barracks')powers[turn].r+=1+barracksBoost;
+  else if(c.special==='greatermine')powers[turn].y+=3;else if(c.special==='greaterfarm')powers[turn].p+=3;else if(c.special==='greaterbarracks')powers[turn].r+=3;
+  else if(c.special==='commandroom')drawBread(turn);else if(c.special==='greatercommand'){drawBread(turn);drawBread(turn)}
+  else if(c.special==='church'){let x=drawOne();if(x)hands[turn].push(x)}
+  else if(c.special==='bandit'){let rich=0;for(let p=0;p<playerCount;p++)if(p!==turn&&(powers[p].y+powers[p].r+powers[p].p)>=5)rich++;powers[turn].y+=rich*playerScaledGain()}
+ }
+ triggerNotices.push('五月の女王：'+c.name+'のターン開始時効果を追加で2回発動しました。');
 }
 function gainNanban(color){if(pendingNanban<=0)return;powers[turn][color]+=2;pendingNanban--;renderGame()}
 function gainTenkuCat(color){if(pendingTenkuCat<=0)return;powers[turn][color]+=1;pendingTenkuCat--;renderGame()}
@@ -214,6 +262,9 @@ function checkEndgameTrigger(){
  if(totalVP(turn)>=gameSettings.winVP){endgameStarter=turn;endgameRemaining=playerCount-1;triggerNotices.push('P'+(turn+1)+'が自分の手番中に'+gameSettings.winVP+'VP以上になりました。 このプレイヤー以外の全員が1手番ずつ終えた後に勝敗を判定します。');let box=q('#gameover');box.className='notice endgame-progress';box.innerHTML='<strong>⚑ ゲーム終了処理中</strong><div>P'+(turn+1)+'が'+gameSettings.winVP+'VP到達｜残り最終ターン：'+endgameRemaining+'人</div>';}
 }
 function effectText(c){
+ if(c.special==='amanomurakumo')return '上位レジェンド。設置：2・3・4・5のいずれか1種類の同じ出目を8個。VP-5。設置時、即座にゲームを終了する。';
+ if(c.special==='mayqueen')return '上位レジェンド。設置：🎲2×3＋資金16。8VP。ターン開始時、自分の設置済みカード1枚を選び、そのターン開始時効果を追加で2回発動する。';
+ if(c.special==='eggharp')return '上位レジェンド。設置：🎲5×3＋兵力12。0VP。設置時、手札または公開市場から好きなカードをコストを支払わず設置する。これを4回行う。';
  if(c.special==='legendmine')return 'レジェンド：スタンダードの「鉱山」のターン開始時の資金獲得量を+3し、鉱山1枚につきVPを+2する。大鉱山は対象外。';
  if(c.special==='legendfarm')return 'レジェンド：スタンダードの「農場」のターン開始時の食料獲得量を+3し、農場1枚につきVPを+2する。大農園は対象外。';
  if(c.special==='legendbarracks')return 'レジェンド：スタンダードの「兵舎」のターン開始時の兵力獲得量を+3し、兵舎1枚につきVPを+2する。要塞は対象外。';
