@@ -28,7 +28,7 @@ body{padding:6px;background:#ecebe7;overflow-x:hidden}.app{max-width:1180px;padd
 .turnstart-choice{margin-top:12px;padding:12px;background:#fff;border:2px solid #555;border-radius:11px;color:#111}.turnstart-choice>strong,.turnstart-choice>div>strong{color:#111;font-size:17px}.turnstart-buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.turnstart-buttons button{min-width:76px;padding:12px 14px;font-weight:800;background:#fff;color:#111;border:2px solid #555}.turnstart-buttons button:active{background:#ffe9a6}.turnstart-dice-buttons button{min-width:58px;font-size:19px}
 @media(max-width:700px){#turnstartpanel.turnstart-modal{width:88vw;padding:14px}.turnstart-buttons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.turnstart-buttons button{min-width:0;padding:12px 6px}}
 </style></head><body><div class="app">
-<div class="top"><div><h2 style="margin:0">ここから先は、僕の領地</h2><div class="version">オリジナル版 Ver.2.12</div><div id="status" class="muted">オリジナル版テスト</div></div><button id="start" type="button" class="primary">ゲーム開始</button></div>
+<div class="top"><div><h2 style="margin:0">ここから先は、僕の領地</h2><div class="version">オリジナル版 Ver.2.13</div><div id="status" class="muted">オリジナル版テスト</div></div><button id="start" type="button" class="primary">ゲーム開始</button></div>
 <div id="setup" class="setup"><div><strong>ゲーム設定</strong></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px"><label for="playerCount">プレイ人数</label><select id="playerCount"><option value="2">2人</option><option value="3">3人</option><option value="4" selected>4人</option><option value="5">5人</option><option value="6">6人</option></select><label for="deckPreset">使用デッキ</label><select id="deckPreset"><option value="standard1" selected>スタンダード1（固定）</option></select><label>勝利VP <input id="settingWinVP" type="number" min="1" value="20" style="width:58px"></label><label>市場公開 <input id="settingMarketTypes" type="number" min="1" value="8" style="width:58px"></label><label>初期資源 <input id="settingInitialResources" type="number" min="0" value="4" style="width:58px"></label><label>手札上限 <input id="settingHandLimit" type="number" min="1" value="6" style="width:58px"></label><label>雇用上限 <input id="settingHireLimit" type="number" min="0" value="3" style="width:58px"></label></div><div class="small" style="margin-top:6px">現在の標準値が入力されています。変更した値はこのゲームに反映されます。</div><div style="margin-top:10px"><strong>キャラクター選択（同じキャラクターは選択不可）</strong><div id="characterSelects" style="margin-top:8px"></div><div class="small">デフォルト領主A～Fから選択します。全員共通：毎ターン3D6＋ターン開始時に好きな資源を1つ獲得。</div></div><div class="small" style="margin-top:6px">勝利VPには仮設置のVPも含みます。</div></div>
 <div id="draft" class="hidden"><div class="row"><div><strong>第<span id="round">1</span>巡</strong>　<span id="who">プレイヤー1</span></div><span id="progress" class="muted"></span></div><div id="instruction" style="margin-bottom:10px"></div><div id="cards" class="cards"></div><div id="players" class="players"></div></div>
 <div id="gamestartsetup" class="hidden"><div class="panel"><strong>ゲーム開始時処理</strong><div class="small" style="margin-top:6px">各プレイヤーは資金・兵力・食料を好きな組み合わせで、設定した初期資源数だけ獲得します。その後、キャラクターの「ゲーム開始時」効果を処理し、オープンマーケットを公開します。</div><div id="initialPowerSetup" style="margin-top:12px"></div></div></div>
@@ -61,9 +61,15 @@ body{padding:6px;background:#ecebe7;overflow-x:hidden}.app{max-width:1180px;padd
 <script>
 (()=>{
 const q=s=>document.querySelector(s), mk=(pre,label,n)=>Array.from({length:n},(_,i)=>({key:pre+(i+1),name:label+(i+1),type:pre})), copies=a=>a.flatMap(c=>Array.from({length:4},(_,i)=>({...c,id:c.key+'-'+(i+1)})));
-const CHARACTER_DATA={a:{name:'A'},b:{name:'B'},c:{name:'C'},d:{name:'D'},e:{name:'E'},f:{name:'F'}};
-const EMPLOYEE_DATA=[...Array(12)].map((_,i)=>({id:'N'+(i+1),name:'N-'+String(i+1).padStart(2,'0'),rarity:'N'})).concat([...Array(9)].map((_,i)=>({id:'R'+(i+1),name:'R-'+String(i+1).padStart(2,'0'),rarity:'R'})),[...Array(6)].map((_,i)=>({id:'SR'+(i+1),name:'SR-'+String(i+1).padStart(2,'0'),rarity:'SR'})),[...Array(3)].map((_,i)=>({id:'SSR'+(i+1),name:'SSR-'+String(i+1).padStart(2,'0'),rarity:'SSR'})));
-function charOf(p){return characters[p]||'a'}
+// コンテンツ内部IDの予約範囲。未実装IDの空データは作らず、追加パックから必要なIDだけ登録する。
+const CONTENT_ID_LIMITS=Object.freeze({S:10,N:200,LL:30,LU:30,C:50,P:30});
+function isReservedContentId(id){
+ const m=String(id||'').match(/^(LL|LU|S|N|C|P)(\d+)$/);
+ return !!(m&&+m[2]>=1&&+m[2]<=CONTENT_ID_LIMITS[m[1]]);
+}
+const CHARACTER_DATA={P1:{name:'A'},P2:{name:'B'},P3:{name:'C'},P4:{name:'D'},P5:{name:'E'},P6:{name:'F'}};
+const EMPLOYEE_DATA=[...Array(12)].map((_,i)=>({id:'C'+(i+1),name:'N-'+String(i+1).padStart(2,'0'),rarity:'N'})).concat([...Array(9)].map((_,i)=>({id:'C'+(i+13),name:'R-'+String(i+1).padStart(2,'0'),rarity:'R'})),[...Array(6)].map((_,i)=>({id:'C'+(i+22),name:'SR-'+String(i+1).padStart(2,'0'),rarity:'SR'})),[...Array(3)].map((_,i)=>({id:'C'+(i+28),name:'SSR-'+String(i+1).padStart(2,'0'),rarity:'SSR'})));
+function charOf(p){return characters[p]||'P1'}
 function renderCharacterSelects(){
  let n=+q('#playerCount').value,box=q('#characterSelects');box.innerHTML='';
  for(let p=0;p<n;p++){let row=document.createElement('div');row.style.margin='6px 0';let lab=document.createElement('span');lab.textContent='P'+(p+1)+' ';let sel=document.createElement('select');sel.dataset.player=p;
@@ -87,7 +93,7 @@ const STD_BASE=[
 {key:'S9',name:'倉庫',type:'S',special:'warehouse',vp:1,costText:'🎲1/3/5'},
 {key:'S10',name:'教会',type:'S',special:'church',vp:1,costText:'🎲1/4＋資金3＋食料1'}
 ];
-const NORMAL_BASE=mk('N','通常 ',45).map(c=>({...c,implemented:false})); NORMAL_BASE[0]={key:'N1',name:'ナーロッパランド',type:'N',special:'paneteria',vp:1}; NORMAL_BASE[1]={key:'N2',name:'領主会議',type:'N',special:'lordmeeting',vp:1,costText:'🎲1/6＋資金4'}; NORMAL_BASE[2]={key:'N3',name:'黒猫の賭場',type:'N',special:'blackcasino',vp:1,costText:'🎲2＋🎲5＋食料5'};
+const NORMAL_BASE=mk('N','通常 ',15).map(c=>({...c,implemented:false})); NORMAL_BASE[0]={key:'N1',name:'ナーロッパランド',type:'N',special:'paneteria',vp:1}; NORMAL_BASE[1]={key:'N2',name:'領主会議',type:'N',special:'lordmeeting',vp:1,costText:'🎲1/6＋資金4'}; NORMAL_BASE[2]={key:'N3',name:'黒猫の賭場',type:'N',special:'blackcasino',vp:1,costText:'🎲2＋🎲5＋食料5'};
 NORMAL_BASE[3]={key:'N4',name:'大鉱山',type:'N',special:'greatermine',vp:2,costText:'🎲1＋🎲2＋資金5'};
 NORMAL_BASE[4]={key:'N5',name:'大農園',type:'N',special:'greaterfarm',vp:2,costText:'🎲3＋🎲4＋食料5'};
 NORMAL_BASE[5]={key:'N6',name:'要塞',type:'N',special:'greaterbarracks',vp:2,costText:'🎲5＋🎲6＋兵力5'};
@@ -113,7 +119,7 @@ function normalCardsForDeck(deckId){
 }
 let gameSettings={winVP:20,marketTypes:8,initialResources:4,handLimit:6,hireLimit:3,deckId:'standard1'};
 let selectedMarketKey=null;
-let stdAbilityUsed={},pendingLordResource=0,playerCount=4,unusedStd=[],packs=[],hands=[],selected=[],round=0,viewer=0,deck=[],market=[],discard=[],turn=0,dice=[],powers=[],installed=[],temporary=[],elekiterUsed=[],pendingNanban=0,pendingTenkuCat=0,commandCounts=[],komePlace=20,pendingParkPlayers=[],characterMode='a',characters=[],legends=[],legendTakenThisTurn=false,endgameStarter=null,endgameRemaining=0,gameEnded=false,breadDeck=[],breadDiscard=[],breadHands=[],employeeDeck=[],employees=[],hiredThisTurn=false,pendingSSRBonus=0,debugVP=[];
+let stdAbilityUsed={},pendingLordResource=0,playerCount=4,unusedStd=[],packs=[],hands=[],selected=[],round=0,viewer=0,deck=[],market=[],discard=[],turn=0,dice=[],powers=[],installed=[],temporary=[],elekiterUsed=[],pendingNanban=0,pendingTenkuCat=0,commandCounts=[],komePlace=20,pendingParkPlayers=[],characterMode='P1',characters=[],legends=[],legendTakenThisTurn=false,endgameStarter=null,endgameRemaining=0,gameEnded=false,breadDeck=[],breadDiscard=[],breadHands=[],employeeDeck=[],employees=[],hiredThisTurn=false,pendingSSRBonus=0,debugVP=[];
 function sh(a){a=[...a];for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function makeBreadDeck(){let a=[];for(let v=1;v<=6;v++)for(let i=0;i<4;i++)a.push({kind:'bread',value:v,name:'命令書 '+v,id:'B'+v+'-'+(i+1)});a.push({kind:'bread',value:'any',name:'命令書 ANY',id:'BANY-1'});return sh(a)}
 function recycleBreadIfEmpty(){if(!breadDeck.length&&breadDiscard.length){breadDeck=sh(breadDiscard);breadDiscard=[]}}
@@ -143,12 +149,12 @@ function pick(i){if(selected[viewer])return;hands[viewer].push(packs[viewer][i])
 function drawOne(){if(!deck.length&&discard.length){deck=sh(discard);discard=[]}let c=deck.shift()||null;if(c&&deck.length===0&&discard.length){deck=sh(discard);discard=[]}return c}
 function refillTo8(){let keys=new Set(market.map(c=>c.key));while(keys.size<gameSettings.marketTypes){let c=drawOne();if(!c)break;market.push(c);keys.add(c.key)}}
 function initLegends(){legends=[
-{id:'u1',tier:'upper',col:0,name:'天叢雲剣',vp:-5,taken:false,unlocked:false,special:'amanomurakumo'},
-{id:'u2',tier:'upper',col:1,name:'五月の女王',vp:8,taken:false,unlocked:false,special:'mayqueen'},
-{id:'u3',tier:'upper',col:2,name:'エッグ＆ハープ',vp:0,taken:false,unlocked:false,special:'eggharp'},
-{id:'l1',tier:'lower',col:0,name:'ミスリルラッシュ',vp:5,taken:false,unlocked:true,special:'legendmine',faces:[1,2],target:'鉱山',resource:'資金'},
-{id:'l2',tier:'lower',col:1,name:'ユグドラシル',vp:5,taken:false,unlocked:true,special:'legendfarm',faces:[3,4],target:'農場',resource:'食料'},
-{id:'l3',tier:'lower',col:2,name:'エインヘリヤル',vp:5,taken:false,unlocked:true,special:'legendbarracks',faces:[5,6],target:'兵舎',resource:'兵力'}]}
+{id:'LU1',tier:'upper',col:0,name:'天叢雲剣',vp:-5,taken:false,unlocked:false,special:'amanomurakumo'},
+{id:'LU2',tier:'upper',col:1,name:'五月の女王',vp:8,taken:false,unlocked:false,special:'mayqueen'},
+{id:'LU3',tier:'upper',col:2,name:'エッグ＆ハープ',vp:0,taken:false,unlocked:false,special:'eggharp'},
+{id:'LL1',tier:'lower',col:0,name:'ミスリルラッシュ',vp:5,taken:false,unlocked:true,special:'legendmine',faces:[1,2],target:'鉱山',resource:'資金'},
+{id:'LL2',tier:'lower',col:1,name:'ユグドラシル',vp:5,taken:false,unlocked:true,special:'legendfarm',faces:[3,4],target:'農場',resource:'食料'},
+{id:'LL3',tier:'lower',col:2,name:'エインヘリヤル',vp:5,taken:false,unlocked:true,special:'legendbarracks',faces:[5,6],target:'兵舎',resource:'兵力'}]}
 function legendCostChoices(L){let rs=[];unusedDice().filter(d=>L.faces.includes(d.value)).forEach(d=>rs.push({kind:'die',id:d.id,label:'🎲'+d.value+'（#'+d.id+'）'}));breadHands[turn].forEach((b,i)=>{let v=b.value;if(v==='any'||L.faces.includes(v))rs.push({kind:'bread',i,label:'命令書'+breadLabel(b)});});return rs}
 function consumeLegendItems(items){
  let breadIdx=items.filter(x=>x.kind==='bread').map(x=>x.i).sort((a,b)=>b-a);
@@ -168,7 +174,7 @@ function takeLegend(id){
   if(powers[turn].r<12)return alert('兵力12が必要です。');let rs=legendSameFaceChoices(5);if(rs.length<3)return alert('出目5のサイコロ／命令書が3個必要です。');consumeLegendItems(rs.slice(0,3));powers[turn].r-=12;
  }
  L.taken=true;legendTakenThisTurn=true;if(L.tier==='lower'){let U=legends.find(x=>x.tier==='upper'&&x.col===L.col);if(U)U.unlocked=true}
- let ef=L.tier==='lower'?L.target+'の獲得効果+3・VP+2':effectText({special:L.special});let card={key:'LEG-'+L.id,name:L.name,type:'LEGEND',special:L.special||'legend',vp:L.vp,effectText:ef};registerInstallation(turn,card);triggerNotices.push(L.name+'を獲得しました。');
+ let ef=L.tier==='lower'?L.target+'の獲得効果+3・VP+2':effectText({special:L.special});let card={key:L.id,name:L.name,type:'LEGEND',special:L.special||'legend',vp:L.vp,effectText:ef};registerInstallation(turn,card);triggerNotices.push(L.name+'を獲得しました。');
  if(L.special==='eggharp')resolveEggHarp(turn);
  if(L.special==='amanomurakumo'){renderGame();finishGame();return}
  renderGame()
