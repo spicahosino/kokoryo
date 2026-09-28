@@ -43,7 +43,7 @@ body{padding:6px;background:#ecebe7;overflow-x:hidden}.app{max-width:1180px;padd
 @media(max-width:700px){.deck-editor-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head><body><div class="app">
-<div class="top"><div><h2 style="margin:0">ここから先は、僕の領地</h2><div class="version">オリジナル版 Ver.2.34</div><div id="status" class="muted">オリジナル版テスト</div></div><button id="start" type="button" class="primary">ゲーム開始</button></div>
+<div class="top"><div><h2 style="margin:0">ここから先は、僕の領地</h2><div class="version">オリジナル版 Ver.2.35</div><div id="status" class="muted">オリジナル版テスト</div></div><button id="start" type="button" class="primary">ゲーム開始</button></div>
 <div id="setup" class="setup"><div><strong>ゲーム設定</strong></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px"><span style="font-weight:700">プレイ人数</span><input id="playerCount" type="hidden" value="4"><div id="playerCountChoices" class="setup-choice-row" style="margin:0"></div><label for="deckPreset">使用デッキ</label><select id="deckPreset"><option value="standard1" selected>スタンダード1（固定）</option><option value="custom">カスタムデッキ</option></select><button id="editDeck" type="button" class="secondary" disabled>デッキ編集</button><label>レジェンド枠 <input id="settingLegendSlots" type="number" min="1" max="30" value="3" style="width:52px"></label><label>勝利VP <input id="settingWinVP" type="number" min="1" value="20" style="width:58px"></label><label>市場公開 <input id="settingMarketTypes" type="number" min="1" value="8" style="width:58px"></label><label>初期資源 <input id="settingInitialResources" type="number" min="0" value="4" style="width:58px"></label><label>手札上限 <input id="settingHandLimit" type="number" min="1" value="6" style="width:58px"></label><label>雇用上限 <input id="settingHireLimit" type="number" min="0" value="3" style="width:58px"></label></div><div class="small" style="margin-top:6px">現在の標準値が入力されています。変更した値はこのゲームに反映されます。</div><div style="margin-top:10px"><strong>キャラクター選択（同じキャラクターは選択不可）</strong><div id="characterSelects" style="margin-top:8px"></div><div class="small">キャラ名 → バージョン → 性別を順番にタップして選択します。同じキャラクターは複数プレイヤーで選択できません。追加パックで別バージョンを追加できます。全員共通：毎ターン3D6＋ターン開始時に好きな資源を1つ獲得。</div></div><div class="small" style="margin-top:6px">勝利VPには仮設置のVPも含みます。</div></div>
 <div id="draft" class="hidden"><div class="row"><div><strong>第<span id="round">1</span>巡</strong>　<span id="who">プレイヤー1</span></div><span id="progress" class="muted"></span></div><div id="instruction" style="margin-bottom:10px"></div><div id="cards" class="cards"></div><div id="players" class="players"></div></div>
 <div id="gamestartsetup" class="hidden"><div class="panel"><strong>ゲーム開始時処理</strong><div class="small" style="margin-top:6px">各プレイヤーは資金・兵力・食料を好きな組み合わせで、設定した初期資源数だけ獲得します。その後、キャラクターの「ゲーム開始時」効果を処理し、オープンマーケットを公開します。</div><div id="initialPowerSetup" style="margin-top:12px"></div></div></div>
@@ -257,7 +257,7 @@ function lordInstallDiceDiscount(){let lord=CHARACTER_DATA[charOf(turn)]||{},sta
 function installCostOptions(required=null){let old=renderingInstallCosts;renderingInstallCosts=true;let out=costOptions(required);renderingInstallCosts=old;return out}
 function costOptions(required=null){
  let a=[];
- if(renderingInstallCosts&&lordInstallDiceDiscount()>0)a.push({id:'free:request',label:'《おねだり》免除'});
+ if(renderingInstallCosts){for(let i=0;i<lordInstallDiceDiscount();i++)a.push({id:'free:request:'+i,label:'《おねだり》免除'+(lordInstallDiceDiscount()>1?' '+(i+1):'')});}
  a.push(...unusedDice().filter(d=>required===null||d.value===required).map(d=>({id:'d:'+d.id,label:'🎲'+d.value+'（実#'+d.id+'）'})));
  breadHands[turn].forEach((b,i)=>{if(required===null||b.value==='any'||b.value===required)a.push({id:'b:'+i,label:'🍞'+breadLabel(b)})});
  return a
@@ -265,7 +265,7 @@ function costOptions(required=null){
 function makeChoicePicker(opts){let box=document.createElement('div');box.className='cost-picker';box.options=opts;box.value=opts.length?String(opts[0].id):'';function paint(){[...box.querySelectorAll('.cost-choice')].forEach(b=>b.classList.toggle('selected',String(b.dataset.value)===String(box.value)))}opts.forEach(x=>{let b=document.createElement('button');b.type='button';b.className='cost-choice';b.dataset.value=x.id;b.textContent=x.label;b.onclick=()=>{box.value=String(x.id);paint()};box.appendChild(b)});paint();return box}
 function costSelect(required=null){return makeChoicePicker(renderingInstallCosts?costOptions(required):installCostOptions(required))}
 function consumeCostChoice(choice,required=null){
- if(String(choice)==='free:request'&&lordInstallDiceDiscount()>0)return true;
+ if(String(choice).startsWith('free:request:')&&lordInstallDiceDiscount()>Number(String(choice).split(':')[2]))return true;
  if(!choice)return false;
  let [k,n]=String(choice).split(':');
  if(k==='d'){let d=unusedDice().find(x=>x.id===+n&&(required===null||x.value===required));if(!d)return false;d.used=true;return true}
@@ -471,7 +471,7 @@ function sameUniqueAbilityAsLord(e,p=turn){
  let lord=CHARACTER_DATA[charOf(p)];
  return !!(e&&e.uniqueAbility&&lord&&lord.uniqueAbility&&e.uniqueAbility===lord.uniqueAbility);
 }
-function redrawSameRarityCast(e){let pool=implementedCastPool(e.rarity);if(!pool.length)pool=allImplementedCastPool(e.rarity);return pool.length?{...pool[Math.floor(Math.random()*pool.length)]}:null}
+function redrawSameRarityCast(e){let pool=implementedCastPool(e.rarity).filter(x=>x.id!==e.id);if(!pool.length)pool=allImplementedCastPool(e.rarity).filter(x=>x.id!==e.id);return pool.length?{...pool[Math.floor(Math.random()*pool.length)]}:null}
 function finalizeHire(e,label=''){
  employees[turn].push(e);hiredThisTurn=true;
  triggerNotices.push((label||('P'+(turn+1)+'が '))+e.rarity+'「'+e.name+'」を雇用しました。ダイス増加は次の自分のターンから適用されます。');renderGame();
@@ -504,7 +504,12 @@ function debugNamedHire(id){
  let base=CAST_TYPES[id];if(!base)return alert('そのキャストは定義されていません。');
  if(base.rarity==='UR'&&isUniqueRareAlreadyHired(base.id))return alert('UR（ユニークレア）「'+castDisplayName(base)+'」はすでに獲得されています。');
  if((employees[turn]||[]).length>=gameSettings.hireLimit)return alert('雇用枠が'+gameSettings.hireLimit+'人埋まっています。');
- let e={...base};employees[turn].push(e);triggerNotices.push('デバッグ：'+e.rarity+'「'+castDisplayName(e)+'」を指名雇用しました。');renderGame();
+ let e={...base};
+ if(sameUniqueAbilityAsLord(e)){
+  let next=redrawSameRarityCast(e);
+  if(next&&confirm(e.rarity+'「'+castDisplayName(e)+'」の固有能力は領主と同じです。\nデバッグ指名雇用でも、このキャストを雇用せず同じレアリティで再抽選しますか？'))e=next;
+ }
+ employees[turn].push(e);triggerNotices.push('デバッグ：'+e.rarity+'「'+castDisplayName(e)+'」を指名雇用しました。');renderGame();
 }
 function debugGainOrder(v){
  v=+v;let i=breadDeck.findIndex(b=>b.value===v);if(i>=0){breadHands[turn].push(breadDeck.splice(i,1)[0]);renderGame();return}
@@ -580,7 +585,7 @@ function renderTurnStart(){let panel=q('#turnstartpanel'),box=q('#turnstarteffec
 }
 
 function optionSelect(values){let seen=new Set(),opts=[];values.forEach(v=>installCostOptions(v).forEach(x=>{if(seen.has(x.id))return;seen.add(x.id);opts.push(x)}));return makeChoicePicker(opts)}
-function consumeOneOf(choice,values){if(String(choice)==='free:request'&&lordInstallDiceDiscount()>0)return true;for(let v of values){let [k,n]=String(choice).split(':');if(k==='d'){let d=unusedDice().find(x=>x.id===+n&&x.value===v);if(d){d.used=true;return true}}else if(k==='b'){let i=+n,b=breadHands[turn][i];if(b&&(b.value==='any'||b.value===v)){breadDiscard.push(breadHands[turn].splice(i,1)[0]);recycleBreadIfEmpty();return true}}}return false}
+function consumeOneOf(choice,values){if(String(choice).startsWith('free:request:')&&lordInstallDiceDiscount()>Number(String(choice).split(':')[2]))return true;for(let v of values){let [k,n]=String(choice).split(':');if(k==='d'){let d=unusedDice().find(x=>x.id===+n&&x.value===v);if(d){d.used=true;return true}}else if(k==='b'){let i=+n,b=breadHands[turn][i];if(b&&(b.value==='any'||b.value===v)){breadDiscard.push(breadHands[turn].splice(i,1)[0]);recycleBreadIfEmpty();return true}}}return false}
 function installStandard(handIndex,choice){let c=hands[turn][handIndex],p=powers[turn];if(!c||c.type!=='S')return;let need={y:0,r:0,p:0},vals=null;
  if(c.special==='plan')need.r=2;else if(c.special==='adjust')need.r=4;else if(c.special==='restrict'||c.special==='permit')need.r=3;
  else if(c.special==='mine'){need.y=2;vals=[1,2]}else if(c.special==='farm'){need.p=2;vals=[3,4]}else if(c.special==='barracks'){need.r=2;vals=[5,6]}
@@ -650,9 +655,9 @@ function renderNewNormalInstalledActions(ic){
 }
 function installElekiter(handIndex,a,b){let p=powers[turn];if(p.y<1||p.r<1||p.p<1)return alert('設置には資金・兵力・食料のパワーが1個ずつ必要です。');if(!distinctCostChoices(a,b))return alert('異なる2枚/2個を選んでください。');if(!consumeCostChoice(a,2)||!consumeCostChoice(b,5))return alert('出目2と出目5を満たす実サイコロまたは命令書を選んでください。');p.y--;p.r--;p.p--;registerInstallation(turn,hands[turn].splice(handIndex,1)[0]);renderGame()}
 function installNanban(handIndex,a,b){let p=powers[turn];if(p.y<2||p.r<2||p.p<2)return alert('設置には資金・兵力・食料のパワーが2個ずつ必要です。');if(!distinctCostChoices(a,b))return alert('異なる2枚/2個を選んでください。');if(!consumeCostChoice(a)||!consumeCostChoice(b))return alert('使用する実サイコロまたは命令書を2つ選んでください。');p.y-=2;p.r-=2;p.p-=2;registerInstallation(turn,hands[turn].splice(handIndex,1)[0]);renderGame()}
-function installNinjaGuild(handIndex,a){let p=powers[turn];if(p.y<5)return alert('設置には資金5が必要です。');let ok=(String(a)==='free:request'&&lordInstallDiceDiscount()>0)?true:(String(a).startsWith('d:')?(()=>{let d=unusedDice().find(x=>'d:'+x.id===a&&(x.value===1||x.value===2));if(!d)return false;d.used=true;return true})():(()=>{let i=+String(a).split(':')[1],b=breadHands[turn][i];if(!b||!(b.value==='any'||b.value===1||b.value===2))return false;breadDiscard.push(breadHands[turn].splice(i,1)[0]);recycleBreadIfEmpty();return true})());if(!ok)return alert('出目1または2を満たす実サイコロまたは命令書を選んでください。');p.y-=5;registerInstallation(turn,hands[turn].splice(handIndex,1)[0]);renderGame()}
+function installNinjaGuild(handIndex,a){let p=powers[turn];if(p.y<5)return alert('設置には資金5が必要です。');let ok=(String(a).startsWith('free:request:')&&lordInstallDiceDiscount()>Number(String(a).split(':')[2]))?true:(String(a).startsWith('d:')?(()=>{let d=unusedDice().find(x=>'d:'+x.id===a&&(x.value===1||x.value===2));if(!d)return false;d.used=true;return true})():(()=>{let i=+String(a).split(':')[1],b=breadHands[turn][i];if(!b||!(b.value==='any'||b.value===1||b.value===2))return false;breadDiscard.push(breadHands[turn].splice(i,1)[0]);recycleBreadIfEmpty();return true})());if(!ok)return alert('出目1または2を満たす実サイコロまたは命令書を選んでください。');p.y-=5;registerInstallation(turn,hands[turn].splice(handIndex,1)[0]);renderGame()}
 function installTenkuCat(handIndex,a,b,trashIndex){let p=powers[turn];if(p.y<2||p.r<1||p.p<2)return alert('設置には資金2・兵力1・食料2が必要です。');if(!distinctCostChoices(a,b))return alert('異なる2枚/2個を選んでください。');if(!installed[turn].length)return alert('天駆猫の設置には、正式に設置済みの他のマーケットカード1枚を捨て札にする必要があります。仮設置カードは選べません。');let idx=Number(trashIndex);if(!Number.isInteger(idx)||idx<0||idx>=installed[turn].length)return alert('捨て札にする設置済みカードを選んでください。');if(!consumeCostChoice(a,1)||!consumeCostChoice(b,6))return alert('出目1と出目6を満たす実サイコロまたは命令書を選んでください。');p.y-=2;p.r-=1;p.p-=2;discard.push(installed[turn].splice(idx,1)[0]);registerInstallation(turn,hands[turn].splice(handIndex,1)[0]);renderGame()}
-function installCursedClock(handIndex,a){let p=powers[turn];if(p.p<3)return alert('設置には食料が3個必要です。');let ok=(String(a)==='free:request'&&lordInstallDiceDiscount()>0)?true:(String(a).startsWith('d:')?(()=>{let d=unusedDice().find(x=>'d:'+x.id===a&&(x.value===5||x.value===6));if(!d)return false;d.used=true;return true})():(()=>{let i=+String(a).split(':')[1],b=breadHands[turn][i];if(!b||!(b.value==='any'||b.value===5||b.value===6))return false;breadDiscard.push(breadHands[turn].splice(i,1)[0]);recycleBreadIfEmpty();return true})());if(!ok)return alert('出目5または6を満たす実サイコロまたは命令書を選んでください。');p.p-=3;let c=hands[turn].splice(handIndex,1)[0];registerInstallation(turn,c);resolveOnInstall(c,turn);renderGame()}
+function installCursedClock(handIndex,a){let p=powers[turn];if(p.p<3)return alert('設置には食料が3個必要です。');let ok=(String(a).startsWith('free:request:')&&lordInstallDiceDiscount()>Number(String(a).split(':')[2]))?true:(String(a).startsWith('d:')?(()=>{let d=unusedDice().find(x=>'d:'+x.id===a&&(x.value===5||x.value===6));if(!d)return false;d.used=true;return true})():(()=>{let i=+String(a).split(':')[1],b=breadHands[turn][i];if(!b||!(b.value==='any'||b.value===5||b.value===6))return false;breadDiscard.push(breadHands[turn].splice(i,1)[0]);recycleBreadIfEmpty();return true})());if(!ok)return alert('出目5または6を満たす実サイコロまたは命令書を選んでください。');p.p-=3;let c=hands[turn].splice(handIndex,1)[0];registerInstallation(turn,c);resolveOnInstall(c,turn);renderGame()}
 
 function installTreasureShip(handIndex,color){let p=powers[turn];if(!['y','r','p'].includes(color)||p[color]<30)return alert('選んだ1色のパワーが30個必要です。');p[color]-=30;let c=hands[turn].splice(handIndex,1)[0];registerInstallation(turn,c);resolveOnInstall(c,turn);renderGame()}
 function installInadamashii(handIndex){if(installed[turn].length<8)return alert('正式に設置済みのマーケットカードが8枚必要です。');let names=installed[turn].map((c,i)=>(i+1)+': '+c.name).join('\n');let raw=prompt('捨てる設置済みカード8枚の番号をカンマ区切りで入力してください。\n'+names);if(raw===null)return;let idx=[...new Set(raw.split(',').map(x=>Number(x.trim())-1))];if(idx.length!==8||idx.some(i=>!Number.isInteger(i)||i<0||i>=installed[turn].length))return alert('異なる8枚の番号を正しく入力してください。');idx.sort((a,b)=>b-a).forEach(i=>discard.push(installed[turn].splice(i,1)[0]));let c=hands[turn].splice(handIndex,1)[0];registerInstallation(turn,c);resolveOnInstall(c,turn);renderGame()}
