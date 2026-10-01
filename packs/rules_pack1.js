@@ -1,0 +1,18 @@
+(()=>{
+window.KOKORYO_RULE_PACKS=window.KOKORYO_RULE_PACKS||{};
+window.KOKORYO_RULE_PACKS.rules_pack1={
+ id:'rules_pack1',
+ name:'追加ルールパック1',
+ ruleCards:[{
+  id:'RC1',
+  name:'市場流動化',
+  effectText:'各プレイヤーのターン終了時、現在の市場カードをすべて捨て札にし、市場を規定数まで新しく公開する。',
+  hooks:{
+   turnEnd(ctx){
+    ctx.api.discardMarketAndRefill();
+    ctx.api.notice('RC1《市場流動化》：ターン終了時に市場をすべて入れ替えました。');
+   }
+  }
+ }]
+};
+})();
