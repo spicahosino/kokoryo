@@ -46,12 +46,12 @@ window.KOKORYO_PACKS.pack1={
   {key:'N25',name:'カルテル',type:'N',vp:1,implemented:true,costText:'🎲ANY＋資金3',effectText:'設置時：自分は資金3・食料3・兵力3。他プレイヤーは各1。',installSpec:{any:1,resources:{y:3}},hooks:{onInstall:({owner,api})=>{for(let p=0;p<api.playerCount;p++)for(const k of ['y','p','r'])api.resource(p,k,p===owner?3:1)}}}
  ],
  legends:[
-  {id:'LL7',tier:'lower',name:'マネーロンダリング',vp:1,special:'moneyLaundering',cost:{y:20},effectText:'設置時：食料10・兵力10。1ターンに1回、資金5→食料10または兵力10。'},
-  {id:'LL8',tier:'lower',name:'好景気',vp:0,special:'boom',specialGroup:'economyLower',specialConfig:{vpFormula:{resources:['y'],divisor:6,round:'ceil'}},hooks:{turnStart:({api})=>{for(let p=0;p<api.playerCount;p++)for(const k of ['y','p','r'])api.resource(p,k,2,'boom')}},effectText:'VP=ceil(資金/6)。獲得条件：出目1/2のサイコロを5個使用。所有者ターン開始時：全員が資金・食料・兵力を2ずつ獲得。'},
-  {id:'LL9',tier:'lower',name:'不況',vp:0,special:'recession',specialGroup:'economyLower',specialConfig:{vpFormula:{resources:['r','p'],divisor:6,round:'ceil'}},hooks:{turnStart:({api})=>{for(let p=0;p<api.playerCount;p++){api.addDebt(p,1);for(const k of ['y','p','r'])api.resource(p,k,-Math.min(1,api.powers[p][k]||0))}}},effectText:'VP=ceil((兵力+食料)/6)。獲得条件：出目3～6のサイコロを5個使用。所有者ターン開始時：全員が負債1、資金・食料・兵力-1。'},
-  {id:'LU7',tier:'upper',name:'雲を貫く摩天楼',vp:8,special:'skyscraper',hooks:{turnStart:({owner,api})=>api.resource(owner,'y',5)},effectText:'ターン開始時：資金5。ゲーム終了時、負債をプラスVPとして扱う。'},
-  {id:'LU8',tier:'upper',name:'黄金時代',vp:0,specialEffect:'goldenAge',special:'goldenAge',specialGroup:'economyUpper',effectText:'特殊獲得：全員の負債合計10以上。VP=ceil(資金/3)-兵力不足-食料不足。'},
-  {id:'LU9',tier:'upper',name:'世界恐慌',vp:0,specialEffect:'greatDepression',special:'greatDepression',specialGroup:'economyUpper',effectText:'特殊獲得：全員の負債0。VP=ceil((兵力+食料)/4)-資金不足。全員資金0・負債6。負債-2VP、返済コスト2倍。'}
+  {id:'LL7',tier:'lower',name:'マネーロンダリング',vp:1,special:'moneyLaundering',cost:{y:20},costText:'資金20',effectText:'設置時、食料10・兵力10を獲得する。1ターンに1回、資金5を支払うことで、食料10または兵力10を獲得する。'},
+  {id:'LL8',tier:'lower',name:'好景気',vp:0,special:'boom',specialGroup:'economyLower',specialConfig:{vpFormula:{resources:['y'],divisor:6,round:'ceil'}},hooks:{turnStart:({api})=>{for(let p=0;p<api.playerCount;p++)for(const k of ['y','p','r'])api.resource(p,k,2,'boom')}},effectText:'獲得条件：出目1または2のサイコロを合計5個使用する。このカードのVPは、所持している資金6個につき1VP（端数切り上げ）。ターン開始時、全プレイヤーは資金・食料・兵力を2ずつ獲得する。'},
+  {id:'LL9',tier:'lower',name:'不況',vp:0,special:'recession',specialGroup:'economyLower',specialConfig:{vpFormula:{resources:['r','p'],divisor:6,round:'ceil'}},hooks:{turnStart:({api})=>{for(let p=0;p<api.playerCount;p++){api.addDebt(p,1);for(const k of ['y','p','r'])api.resource(p,k,-Math.min(1,api.powers[p][k]||0))}}},effectText:'獲得条件：出目3～6のサイコロを合計5個使用する。このカードのVPは、所持している兵力と食料の合計6個につき1VP（端数切り上げ）。ターン開始時、全プレイヤーは負債1枚を獲得し、資金・食料・兵力を1ずつ失う。'},
+  {id:'LU7',tier:'upper',name:'雲を貫く摩天楼',vp:8,special:'skyscraper',costText:'🎲1＋🎲2＋🎲3＋🎲4＋兵力10＋食料10',hooks:{turnStart:({owner,api})=>api.resource(owner,'y',5)},effectText:'ターン開始時、資金5を獲得する。ゲーム終了時、自分の負債を1枚につき+1VPとして扱う。《世界恐慌》適用中は1枚につき+2VPとして扱う。'},
+  {id:'LU8',tier:'upper',name:'黄金時代',vp:0,specialEffect:'goldenAge',special:'goldenAge',specialGroup:'economyUpper',effectText:'特殊獲得：全プレイヤーの負債合計が10枚以上。このカードのVPは資金3個につき1VP（端数切り上げ）から、兵力10未満の不足数と食料10未満の不足数を引いた値になる。獲得時、全員の負債をすべて捨て、全員の食料・兵力を1個につき資金1へ変換し、自分はさらに資金20を獲得する。以後、新たな負債は獲得できない。'},
+  {id:'LU9',tier:'upper',name:'世界恐慌',vp:0,specialEffect:'greatDepression',special:'greatDepression',specialGroup:'economyUpper',effectText:'特殊獲得：全プレイヤーの負債が0枚。このカードのVPは兵力と食料の合計4個につき1VP（端数切り上げ）から、資金10未満の不足数を引いた値になる。獲得時、全プレイヤーの資金を0にし、負債を6枚ずつ獲得する。以後、負債は1枚につき-2VPとなり、返済に必要なコストは2倍になる。'}
  ]
 };
 })();

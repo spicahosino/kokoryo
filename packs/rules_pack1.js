@@ -23,10 +23,6 @@ window.KOKORYO_RULE_PACKS.rules_pack1={
     if(gained>0)ctx.api.notice('RC2《暗黒時代》：ターン開始時に負債を1枚獲得しました。');
    }
   }
- },{
-  id:'RC3',
-  name:'買い手市場',
-  effectText:'雇用を無料で行える。雇用人数上限を+1する。'
  }]
 };
 })();
