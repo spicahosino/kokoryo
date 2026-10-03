@@ -13,6 +13,20 @@ window.KOKORYO_RULE_PACKS.rules_pack1={
     ctx.api.notice('RC1《市場流動化》：ターン終了時に市場をすべて入れ替えました。');
    }
   }
+ },{
+  id:'RC2',
+  name:'暗黒時代',
+  effectText:'各プレイヤーは、自分のターン開始時に負債を1枚獲得する。',
+  hooks:{
+   turnStart(ctx){
+    const gained=ctx.api.addDebt(ctx.player,1);
+    if(gained>0)ctx.api.notice('RC2《暗黒時代》：ターン開始時に負債を1枚獲得しました。');
+   }
+  }
+ },{
+  id:'RC3',
+  name:'買い手市場',
+  effectText:'雇用を無料で行える。雇用人数上限を+1する。'
  }]
 };
 })();
