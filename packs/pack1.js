@@ -6,8 +6,6 @@ const blessingText='追加実サイコロ1個。実サイコロを資源に変�
 const commandOnHire='雇用時：命令書1枚を獲得。';
 function pay(api,p,cost){for(const k of ['y','p','r'])if((api.powers[p]?.[k]||0)<(cost[k]||0))return false;for(const k of ['y','p','r'])if(cost[k])api.resource(p,k,-cost[k]);return true}
 function clearAllDebt(api){for(let p=0;p<api.playerCount;p++)api.clearDebt(p)}
-window.KOKORYO_LEGEND_LAYOUT_RULES=window.KOKORYO_LEGEND_LAYOUT_RULES||[];
-window.KOKORYO_LEGEND_LAYOUT_RULES.push({packId:'pack1',type:'pairedLowerWithUpper',lowerIds:['LL8','LL9'],upperByLower:{LL8:'LU8',LL9:'LU9'},exclusiveLower:true,exclusiveUpper:true});
 window.KOKORYO_PACKS.pack1={
  id:'pack1',name:'追加パック1',
  characters:{
@@ -47,14 +45,13 @@ window.KOKORYO_PACKS.pack1={
   {key:'N24',name:'債務回収',type:'N',vp:1,implemented:true,costText:'🎲5/6＋兵力4',effectText:'1ターンに1回、兵力1を支払い、資金2または食料2を獲得。',installSpec:{faces:[[5,6]],resources:{r:4}}},
   {key:'N25',name:'カルテル',type:'N',vp:1,implemented:true,costText:'🎲ANY＋資金3',effectText:'設置時：自分は資金3・食料3・兵力3。他プレイヤーは各1。',installSpec:{any:1,resources:{y:3}},hooks:{onInstall:({owner,api})=>{for(let p=0;p<api.playerCount;p++)for(const k of ['y','p','r'])api.resource(p,k,p===owner?3:1)}}}
  ],
- legendLayoutRules:[{type:'pairedLowerWithUpper',lowerIds:['LL8','LL9'],upperByLower:{LL8:'LU8',LL9:'LU9'},exclusiveLower:true,exclusiveUpper:true}],
  legends:[
   {id:'LL7',tier:'lower',name:'マネーロンダリング',vp:1,special:'moneyLaundering',cost:{y:20},costText:'資金20',effectText:'設置時、食料10・兵力10を獲得する。1ターンに1回、資金5を支払うことで、食料10または兵力10を獲得する。'},
-  {id:'LL8',tier:'lower',name:'好景気',vp:0,special:'boom',specialGroup:'economyLower',specialConfig:{vpFormula:{resources:['y'],divisor:6,round:'ceil'}},hooks:{turnStart:({api})=>{for(let p=0;p<api.playerCount;p++)for(const k of ['y','p','r'])api.resource(p,k,2,'boom')}},effectText:'獲得条件：出目1または2のサイコロを合計5個使用する。このカードのVPは、所持している資金6個につき1VP（端数切り上げ）。ターン開始時、全プレイヤーは資金・食料・兵力を2ずつ獲得する。'},
-  {id:'LL9',tier:'lower',name:'不況',vp:0,special:'recession',specialGroup:'economyLower',specialConfig:{vpFormula:{resources:['r','p'],divisor:6,round:'ceil'}},hooks:{turnStart:({api})=>{for(let p=0;p<api.playerCount;p++){api.addDebt(p,1);for(const k of ['y','p','r'])api.resource(p,k,-Math.min(1,api.powers[p][k]||0))}}},effectText:'獲得条件：出目3～6のサイコロを合計5個使用する。このカードのVPは、所持している兵力と食料の合計6個につき1VP（端数切り上げ）。ターン開始時、全プレイヤーは負債1枚を獲得し、資金・食料・兵力を1ずつ失う。'},
+  {id:'LL8',tier:'lower',layoutSet:'economyPair',pairedUpperId:'LU8',exclusiveLayoutSet:true,name:'好景気',vp:0,special:'boom',specialGroup:'economyLower',specialConfig:{vpFormula:{resources:['y'],divisor:6,round:'ceil'}},hooks:{turnStart:({api})=>{for(let p=0;p<api.playerCount;p++)for(const k of ['y','p','r'])api.resource(p,k,2,'boom')}},effectText:'獲得条件：出目1または2のサイコロを合計5個使用する。このカードのVPは、所持している資金6個につき1VP（端数切り上げ）。ターン開始時、全プレイヤーは資金・食料・兵力を2ずつ獲得する。'},
+  {id:'LL9',tier:'lower',layoutSet:'economyPair',pairedUpperId:'LU9',exclusiveLayoutSet:true,name:'不況',vp:0,special:'recession',specialGroup:'economyLower',specialConfig:{vpFormula:{resources:['r','p'],divisor:6,round:'ceil'}},hooks:{turnStart:({api})=>{for(let p=0;p<api.playerCount;p++){api.addDebt(p,1);for(const k of ['y','p','r'])api.resource(p,k,-Math.min(1,api.powers[p][k]||0))}}},effectText:'獲得条件：出目3～6のサイコロを合計5個使用する。このカードのVPは、所持している兵力と食料の合計6個につき1VP（端数切り上げ）。ターン開始時、全プレイヤーは負債1枚を獲得し、資金・食料・兵力を1ずつ失う。'},
   {id:'LU7',tier:'upper',name:'雲を貫く摩天楼',vp:8,special:'skyscraper',costText:'🎲1＋🎲2＋🎲3＋🎲4＋兵力10＋食料10',hooks:{turnStart:({owner,api})=>api.resource(owner,'y',5)},effectText:'ターン開始時、資金5を獲得する。ゲーム終了時、自分の負債を1枚につき+1VPとして扱う。《世界恐慌》適用中は1枚につき+2VPとして扱う。'},
-  {id:'LU8',tier:'upper',name:'黄金時代',vp:0,specialEffect:'goldenAge',special:'goldenAge',specialGroup:'economyUpper',effectText:'特殊獲得：全プレイヤーの負債合計が10枚以上。このカードのVPは資金3個につき1VP（端数切り上げ）から、兵力10未満の不足数と食料10未満の不足数を引いた値になる。獲得時、全員の負債をすべて捨て、全員の食料・兵力を1個につき資金1へ変換し、自分はさらに資金20を獲得する。以後、新たな負債は獲得できない。'},
-  {id:'LU9',tier:'upper',name:'世界恐慌',vp:0,specialEffect:'greatDepression',special:'greatDepression',specialGroup:'economyUpper',effectText:'特殊獲得：全プレイヤーの負債が0枚。このカードのVPは兵力と食料の合計4個につき1VP（端数切り上げ）から、資金10未満の不足数を引いた値になる。獲得時、全プレイヤーの資金を0にし、負債を6枚ずつ獲得する。以後、負債は1枚につき-2VPとなり、返済に必要なコストは2倍になる。'}
+  {id:'LU8',tier:'upper',layoutSet:'economyPair',exclusiveLayoutSet:true,name:'黄金時代',vp:0,specialEffect:'goldenAge',special:'goldenAge',specialGroup:'economyUpper',effectText:'特殊獲得：全プレイヤーの負債合計が10枚以上。このカードのVPは資金3個につき1VP（端数切り上げ）から、兵力10未満の不足数と食料10未満の不足数を引いた値になる。獲得時、全員の負債をすべて捨て、全員の食料・兵力を1個につき資金1へ変換し、自分はさらに資金20を獲得する。以後、新たな負債は獲得できない。'},
+  {id:'LU9',tier:'upper',layoutSet:'economyPair',exclusiveLayoutSet:true,name:'世界恐慌',vp:0,specialEffect:'greatDepression',special:'greatDepression',specialGroup:'economyUpper',effectText:'特殊獲得：全プレイヤーの負債が0枚。このカードのVPは兵力と食料の合計4個につき1VP（端数切り上げ）から、資金10未満の不足数を引いた値になる。獲得時、全プレイヤーの資金を0にし、負債を6枚ずつ獲得する。以後、負債は1枚につき-2VPとなり、返済に必要なコストは2倍になる。'}
  ]
 };
 })();
