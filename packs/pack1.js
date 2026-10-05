@@ -6,6 +6,8 @@ const blessingText='追加実サイコロ1個。実サイコロを資源に変�
 const commandOnHire='雇用時：命令書1枚を獲得。';
 function pay(api,p,cost){for(const k of ['y','p','r'])if((api.powers[p]?.[k]||0)<(cost[k]||0))return false;for(const k of ['y','p','r'])if(cost[k])api.resource(p,k,-cost[k]);return true}
 function clearAllDebt(api){for(let p=0;p<api.playerCount;p++)api.clearDebt(p)}
+window.KOKORYO_LEGEND_LAYOUT_RULES=window.KOKORYO_LEGEND_LAYOUT_RULES||[];
+window.KOKORYO_LEGEND_LAYOUT_RULES.push({packId:'pack1',type:'pairedLowerWithUpper',lowerIds:['LL8','LL9'],upperByLower:{LL8:'LU8',LL9:'LU9'},exclusiveLower:true,exclusiveUpper:true});
 window.KOKORYO_PACKS.pack1={
  id:'pack1',name:'追加パック1',
  characters:{
