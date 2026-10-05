@@ -45,6 +45,7 @@ window.KOKORYO_PACKS.pack1={
   {key:'N24',name:'債務回収',type:'N',vp:1,implemented:true,costText:'🎲5/6＋兵力4',effectText:'1ターンに1回、兵力1を支払い、資金2または食料2を獲得。',installSpec:{faces:[[5,6]],resources:{r:4}}},
   {key:'N25',name:'カルテル',type:'N',vp:1,implemented:true,costText:'🎲ANY＋資金3',effectText:'設置時：自分は資金3・食料3・兵力3。他プレイヤーは各1。',installSpec:{any:1,resources:{y:3}},hooks:{onInstall:({owner,api})=>{for(let p=0;p<api.playerCount;p++)for(const k of ['y','p','r'])api.resource(p,k,p===owner?3:1)}}}
  ],
+ legendLayoutRules:[{type:'pairedLowerWithUpper',lowerIds:['LL8','LL9'],upperByLower:{LL8:'LU8',LL9:'LU9'},exclusiveLower:true,exclusiveUpper:true}],
  legends:[
   {id:'LL7',tier:'lower',name:'マネーロンダリング',vp:1,special:'moneyLaundering',cost:{y:20},costText:'資金20',effectText:'設置時、食料10・兵力10を獲得する。1ターンに1回、資金5を支払うことで、食料10または兵力10を獲得する。'},
   {id:'LL8',tier:'lower',name:'好景気',vp:0,special:'boom',specialGroup:'economyLower',specialConfig:{vpFormula:{resources:['y'],divisor:6,round:'ceil'}},hooks:{turnStart:({api})=>{for(let p=0;p<api.playerCount;p++)for(const k of ['y','p','r'])api.resource(p,k,2,'boom')}},effectText:'獲得条件：出目1または2のサイコロを合計5個使用する。このカードのVPは、所持している資金6個につき1VP（端数切り上げ）。ターン開始時、全プレイヤーは資金・食料・兵力を2ずつ獲得する。'},
