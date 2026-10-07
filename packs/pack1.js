@@ -1,20 +1,17 @@
 (()=>{
 window.KOKORYO_PACKS=window.KOKORYO_PACKS||{};
-const recreationText='自分の設置済みカード1枚を、VP差が±1以内（同値含む）の手札1枚と入れ替えて仮設置する。設置時効果は発動する。複数所持しても範囲は±1のまま。';
-const goldText='常時：このキャラクターは10VPを持つ。《パーフェクト・イミテーション》ではコピーできない。同じ《無限の黄金》を複数所持しても10VPのまま。';
-const blessingText='追加実サイコロ1個。実サイコロを資源に変換するとき、その資源の獲得量を+1する。この+1は《神の恩恵》の所持数だけ重複する。';
 const commandOnHire='雇用時：命令書1枚を獲得。';
 function pay(api,p,cost){for(const k of ['y','p','r'])if((api.powers[p]?.[k]||0)<(cost[k]||0))return false;for(const k of ['y','p','r'])if(cost[k])api.resource(p,k,-cost[k]);return true}
 function clearAllDebt(api){for(let p=0;p<api.playerCount;p++)api.clearDebt(p)}
 window.KOKORYO_PACKS.pack1={
  id:'pack1',name:'追加パック1',
  characters:{
-  P13:{name:'ジュネ',title:'天使見習い',gender:'男性',group:'june',selectLabel:'ジュネ',uniqueAbility:'リクリエイション',recreationRange:1,abilityText:recreationText},
-  P14:{name:'ジュネ',title:'天使見習い',gender:'女性',group:'june',selectLabel:'ジュネ',uniqueAbility:'リクリエイション',recreationRange:1,abilityText:recreationText},
-  P15:{name:'マイン',title:'無限の黄金',gender:'男性',group:'minegold',selectLabel:'マイン',uniqueAbility:'無限の黄金',vp:10,copyable:false,abilityText:goldText},
-  P16:{name:'マイン',title:'無限の黄金',gender:'女性',group:'minegold',selectLabel:'マイン',uniqueAbility:'無限の黄金',vp:10,copyable:false,abilityText:goldText},
-  P17:{name:'築友城 トキ',title:'駆け出し領主',gender:'男性',group:'hero',selectLabel:'トキ／さくら',uniqueAbility:'神の恩恵',extraDice:1,dieResourceBonus:1,abilityText:blessingText},
-  P18:{name:'築友城 さくら',title:'駆け出し領主',gender:'女性',group:'hero',selectLabel:'トキ／さくら',uniqueAbility:'神の恩恵',extraDice:1,dieResourceBonus:1,abilityText:blessingText}
+  P13:{name:'ジュネ',title:'天使見習い',gender:'男性',group:'june',selectLabel:'ジュネ',uniqueAbility:'リクリエイション'},
+  P14:{name:'ジュネ',title:'天使見習い',gender:'女性',group:'june',selectLabel:'ジュネ',uniqueAbility:'リクリエイション'},
+  P15:{name:'マイン',title:'無限の黄金',gender:'男性',group:'minegold',selectLabel:'マイン',uniqueAbility:'無限の黄金'},
+  P16:{name:'マイン',title:'無限の黄金',gender:'女性',group:'minegold',selectLabel:'マイン',uniqueAbility:'無限の黄金'},
+  P17:{name:'築友城 トキ',title:'駆け出し領主',gender:'男性',group:'hero',selectLabel:'トキ／さくら',uniqueAbility:'神の恩恵'},
+  P18:{name:'築友城 さくら',title:'駆け出し領主',gender:'女性',group:'hero',selectLabel:'トキ／さくら',uniqueAbility:'神の恩恵'}
  },
  characterFamilies:[
   {id:'june',label:'ジュネ',packId:'pack1',versions:[{id:'apprenticeAngel',label:'天使見習い',male:'P13',female:'P14'}]},
@@ -28,9 +25,9 @@ window.KOKORYO_PACKS.pack1={
   CSSR5:{id:'CSSR5',name:'伝説の勝負師',rarity:'SSR',synthesisOnly:true,chosenDice:2,hireBread:1,abilityText:commandOnHire+'好きな出目の実サイコロ2個を獲得。'},
   CSR6:{id:'CSR6',name:'メイド',rarity:'SR',hireChooseResource:3,hireOnly:true,hireBread:1,noCommonDie:true,abilityText:'雇用時：命令書1枚。好きな1種類の資源を3個獲得。'},
   CSSR6:{id:'CSSR6',name:'メイド長',rarity:'SSR',hireFreeResourceTotal:3,hireOnly:true,hireBread:1,noCommonDie:true,abilityText:'雇用時：命令書1枚。好きな資源を合計3個、自由に振り分けて獲得。'},
-  CUR7:{id:'CUR7',name:'リラ',title:'創造の大魔術師',rarity:'UR',uniqueAbility:'リクリエイション',chooseDie:true,recreationRange:1,abilityText:recreationText,personKey:'lira'},
-  CUR8:{id:'CUR8',name:'ゴルド',title:'金・暴力・欲望',rarity:'UR',uniqueAbility:'無限の黄金',chooseDie:true,vp:10,copyable:false,abilityText:goldText,personKey:'gold'},
-  CUR9:{id:'CUR9',name:'榎 奏音',title:'もう1人の転移者',rarity:'UR',uniqueAbility:'神の恩恵',chooseDie:true,extraDice:1,dieResourceBonus:1,abilityText:blessingText,personKey:'kanon'}
+  CUR7:{id:'CUR7',name:'リラ',title:'創造の大魔術師',rarity:'UR',uniqueAbility:'リクリエイション',chooseDie:true,personKey:'lira'},
+  CUR8:{id:'CUR8',name:'ゴルド',title:'金・暴力・欲望',rarity:'UR',uniqueAbility:'無限の黄金',chooseDie:true,personKey:'gold'},
+  CUR9:{id:'CUR9',name:'榎 奏音',title:'もう1人の転移者',rarity:'UR',uniqueAbility:'神の恩恵',chooseDie:true,personKey:'kanon'}
  },
  castIds:['CN4','CR4','CSR5','CSSR5','CSR6','CSSR6','CUR7','CUR8','CUR9'],
  normalCards:[
