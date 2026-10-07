@@ -30,7 +30,7 @@ window.KOKORYO_PACKS.pack1={
   CSSR6:{id:'CSSR6',name:'メイド長',rarity:'SSR',hireFreeResourceTotal:3,hireOnly:true,hireBread:1,noCommonDie:true,abilityText:'雇用時：命令書1枚。好きな資源を合計3個、自由に振り分けて獲得。'},
   CUR7:{id:'CUR7',name:'リラ',title:'創造の大魔術師',rarity:'UR',uniqueAbility:'リクリエイション',chooseDie:true,recreationRange:1,abilityText:recreationText,personKey:'lira'},
   CUR8:{id:'CUR8',name:'ゴルド',title:'金・暴力・欲望',rarity:'UR',uniqueAbility:'無限の黄金',chooseDie:true,vp:10,copyable:false,abilityText:goldText,personKey:'gold'},
-  CUR9:{id:'CUR9',name:'柊 歌音',title:'領主補佐',rarity:'UR',uniqueAbility:'神の恩恵',chooseDie:true,extraDice:1,dieResourceBonus:1,abilityText:blessingText,personKey:'kanon'}
+  CUR9:{id:'CUR9',name:'榎 奏音',title:'もう1人の転移者',rarity:'UR',uniqueAbility:'神の恩恵',chooseDie:true,extraDice:1,dieResourceBonus:1,abilityText:blessingText,personKey:'kanon'}
  },
  castIds:['CN4','CR4','CSR5','CSSR5','CSR6','CSSR6','CUR7','CUR8','CUR9'],
  normalCards:[
